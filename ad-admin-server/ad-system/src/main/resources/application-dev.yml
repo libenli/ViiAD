@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://127.0.0.1:3306/ad_admin?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: root
+  redis:
+    host: 127.0.0.1
+    port: 6379
+    database: 0
+    password: ${MRD_REDIS_PASSWORD:}
+
+logging:
+  level:
+    com.mrd.ad: debug
+
+mrd:
+  upload:
+    provider: local
+    local-path: ./uploads
+    public-base-url: http://127.0.0.1:8080/uploads
+    base-path: materials
