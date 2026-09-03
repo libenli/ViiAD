@@ -1,49 +1,74 @@
 <template>
-  <AppPage eyebrow="广告业务" title="广告详情" :stats="stats">
+  <AppPage :eyebrow="locale.t('page.business')" :title="locale.t('page.ads.detailTitle')" :stats="stats">
     <template #actions>
-      <el-button @click="router.push('/ads')">返回列表</el-button>
+      <el-button @click="router.push('/ads')">{{ locale.t('common.backToList') }}</el-button>
       <el-button
         v-if="ad && user.hasPermission('ad:edit') && (ad.status === 'draft' || ad.status === 'rejected')"
         type="primary"
         @click="router.push(`/ads/${ad.id}/edit`)"
       >
-        编辑
+        {{ locale.t('common.edit') }}
       </el-button>
       <el-button
         v-if="ad && user.hasPermission('ad:submit') && (ad.status === 'draft' || ad.status === 'rejected')"
         type="warning"
         @click="handleSubmit"
       >
-        提交审核
+        {{ locale.t('page.ads.submitReview') }}
       </el-button>
       <el-button v-if="user.hasPermission('ad:audit') && ad?.status === 'submitted'" type="success" @click="handleApprove">
-        审核通过
+        {{ locale.t('page.ads.approve') }}
       </el-button>
       <el-button v-if="user.hasPermission('ad:audit') && ad?.status === 'submitted'" type="danger" @click="handleReject">
-        驳回
+        {{ locale.t('page.ads.reject') }}
       </el-button>
     </template>
 
     <el-skeleton v-if="loading" :rows="8" animated />
     <template v-else-if="ad">
       <el-descriptions :column="2" border>
-        <el-descriptions-item label="广告编号">{{ ad.adCode }}</el-descriptions-item>
-        <el-descriptions-item label="广告名称">{{ ad.adName }}</el-descriptions-item>
-        <el-descriptions-item label="广告主ID">{{ ad.advertiserId }}</el-descriptions-item>
-        <el-descriptions-item label="代理商ID">{{ ad.agentId || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="广告类型">{{ getAdTypeLabel(ad.adType) }}</el-descriptions-item>
-        <el-descriptions-item label="投放目标">{{ ad.objective || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="投放区域">{{ ad.regionCode || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="预算金额">￥{{ ad.budgetAmount || 0 }}</el-descriptions-item>
-        <el-descriptions-item label="状态">
+        <el-descriptions-item :label="locale.t('page.ads.code')">{{ ad.adCode }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.ads.name')">{{ ad.adName }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.ads.advertiserId')">{{ ad.advertiserId }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.ads.agentId')">{{ ad.agentId || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.ads.type')">{{ getAdTypeLabel(ad.adType) }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.ads.objective')">{{ getObjectiveLabel(ad.objective) }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.ads.region')">{{ ad.regionCode || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.ads.budget')">￥{{ ad.budgetAmount || 0 }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.ads.status')">
           <el-tag :type="adStatusMap[ad.status]?.type || 'info'" effect="dark">
-            {{ adStatusMap[ad.status]?.label || ad.status }}
+            {{ getStatusLabel(ad.status) }}
           </el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="创建时间">{{ ad.createTime || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="审核意见" :span="2">{{ ad.auditComment || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="广告说明" :span="2">{{ ad.description || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.ads.createTime')">{{ ad.createTime || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.ads.auditComment')" :span="2">{{ ad.auditComment || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.ads.description')" :span="2">{{ ad.description || '-' }}</el-descriptions-item>
       </el-descriptions>
+
+      <section class="preview-section">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">{{ locale.t('page.ads.previewEyebrow') }}</p>
+            <h3>{{ locale.t('page.ads.previewTitle') }}</h3>
+          </div>
+          <span>{{ locale.t('page.ads.previewCount').replace('{count}', String(materials.length)) }}</span>
+        </div>
+        <el-empty v-if="!materials.length" :description="locale.t('page.ads.previewEmpty')" />
+        <div v-else class="material-preview-grid">
+          <article v-for="material in materials" :key="material.id" class="material-preview-card">
+            <div class="preview-box">
+              <img v-if="material.materialType === 'image'" :src="material.fileUrl" :alt="material.materialName" />
+              <video v-else-if="material.materialType === 'video'" :src="material.fileUrl" controls />
+              <div v-else class="h5-preview-card">H5</div>
+            </div>
+            <div class="preview-info">
+              <strong>{{ material.materialName }}</strong>
+              <span>{{ getMaterialTypeLabel(material.materialType) }} / {{ material.materialCode }}</span>
+              <el-link type="primary" :href="material.fileUrl" target="_blank">{{ locale.t('page.ads.openPreview') }}</el-link>
+            </div>
+          </article>
+        </div>
+      </section>
     </template>
   </AppPage>
 </template>
@@ -63,23 +88,39 @@ import {
   submitAd,
   type AdOrder
 } from '@/api/ads'
+import { fetchMaterials, materialTypeOptions, type AdMaterial } from '@/api/materials'
+import { useLocaleStore } from '@/stores/locale'
 
 const route = useRoute()
 const router = useRouter()
+const locale = useLocaleStore()
 const user = useUserStore()
 const loading = ref(false)
 const ad = ref<AdOrder>()
+const materials = ref<AdMaterial[]>([])
 const id = computed(() => Number(route.params.id))
 
 const stats = computed(() => [
-  { label: '当前状态', value: ad.value ? adStatusMap[ad.value.status]?.label || ad.value.status : '-' },
-  { label: '广告类型', value: ad.value ? getAdTypeLabel(ad.value.adType) : '-' },
-  { label: '预算金额', value: ad.value ? `￥${ad.value.budgetAmount || 0}` : '-' },
-  { label: '广告主ID', value: ad.value?.advertiserId || '-' }
+  { label: locale.t('page.ads.currentStatus'), value: ad.value ? getStatusLabel(ad.value.status) : '-' },
+  { label: locale.t('page.ads.type'), value: ad.value ? getAdTypeLabel(ad.value.adType) : '-' },
+  { label: locale.t('page.ads.budget'), value: ad.value ? `￥${ad.value.budgetAmount || 0}` : '-' },
+  { label: locale.t('page.ads.advertiserId'), value: ad.value?.advertiserId || '-' }
 ])
 
 function getAdTypeLabel(value: string) {
-  return adTypeOptions.find((item) => item.value === value)?.label || value
+  return locale.t(`status.adType.${value}`, adTypeOptions.find((item) => item.value === value)?.label || value)
+}
+
+function getObjectiveLabel(value?: string) {
+  return value ? locale.t(`status.objective.${value}`, value) : '-'
+}
+
+function getMaterialTypeLabel(value: string) {
+  return locale.t(`status.materialType.${value}`, materialTypeOptions.find((item) => item.value === value)?.label || value)
+}
+
+function getStatusLabel(value: string) {
+  return locale.t(`status.ad.${value}`, adStatusMap[value]?.label || value)
 }
 
 async function loadDetail() {
@@ -87,6 +128,8 @@ async function loadDetail() {
   try {
     const result = await fetchAdDetail(id.value)
     ad.value = result.data
+    const materialResult = await fetchMaterials({ adId: id.value, page: 1, size: 200 })
+    materials.value = materialResult.data.records
   } finally {
     loading.value = false
   }
@@ -94,27 +137,110 @@ async function loadDetail() {
 
 async function handleSubmit() {
   await submitAd(id.value)
-  ElMessage.success('已提交审核')
+  ElMessage.success(locale.t('page.ads.submitted'))
   loadDetail()
 }
 
 async function handleApprove() {
   await approveAd(id.value)
-  ElMessage.success('审核已通过')
+  ElMessage.success(locale.t('page.ads.approved'))
   loadDetail()
 }
 
 async function handleReject() {
-  const result = await ElMessageBox.prompt('请输入驳回原因', '驳回广告', {
-    confirmButtonText: '确认驳回',
-    cancelButtonText: '取消',
+  const result = await ElMessageBox.prompt(locale.t('page.ads.rejectPrompt'), locale.t('page.ads.rejectTitle'), {
+    confirmButtonText: locale.t('page.ads.rejectConfirm'),
+    cancelButtonText: locale.t('common.cancel'),
     inputPattern: /\S+/,
-    inputErrorMessage: '驳回原因不能为空'
+    inputErrorMessage: locale.t('page.ads.rejectRequired')
   })
   await rejectAd(id.value, result.value)
-  ElMessage.success('广告已驳回')
+  ElMessage.success(locale.t('page.ads.rejected'))
   loadDetail()
 }
 
 onMounted(loadDetail)
 </script>
+
+<style scoped>
+.preview-section {
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid rgba(83, 229, 255, 0.14);
+  border-radius: 14px;
+  background: rgba(5, 18, 26, 0.68);
+}
+
+.section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.section-head h3 {
+  margin: 4px 0 0;
+  color: #f4fbff;
+  font-size: 18px;
+}
+
+.section-head span {
+  color: rgba(213, 240, 255, 0.68);
+}
+
+.material-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.material-preview-card {
+  overflow: hidden;
+  border: 1px solid rgba(83, 229, 255, 0.14);
+  border-radius: 12px;
+  background: rgba(8, 23, 32, 0.96);
+}
+
+.preview-box {
+  display: grid;
+  place-items: center;
+  height: 168px;
+  background: rgba(3, 12, 18, 0.86);
+}
+
+.preview-box img,
+.preview-box video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.h5-preview-card {
+  display: grid;
+  place-items: center;
+  width: 92px;
+  height: 92px;
+  border: 1px solid rgba(57, 198, 214, 0.5);
+  border-radius: 18px;
+  color: #ffffff;
+  background: linear-gradient(135deg, rgba(57, 198, 214, 0.32), rgba(99, 212, 144, 0.18));
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.preview-info {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+}
+
+.preview-info strong {
+  color: #f4fbff;
+}
+
+.preview-info span {
+  color: rgba(213, 240, 255, 0.62);
+  font-size: 13px;
+}
+</style>

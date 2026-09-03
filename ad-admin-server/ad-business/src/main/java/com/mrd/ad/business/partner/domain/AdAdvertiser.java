@@ -15,6 +15,7 @@ public class AdAdvertiser extends BaseEntity {
     private Long ownerUserId;
     private String status;
     private String sourceType;
+    private Long agentId;
     private String remark;
 
     public String getAdvertiserCode() {
@@ -87,6 +88,14 @@ public class AdAdvertiser extends BaseEntity {
 
     public void setSourceType(String sourceType) {
         this.sourceType = sourceType;
+    }
+
+    public Long getAgentId() {
+        return agentId;
+    }
+
+    public void setAgentId(Long agentId) {
+        this.agentId = agentId;
     }
 
     public String getRemark() {

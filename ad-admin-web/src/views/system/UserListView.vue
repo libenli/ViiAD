@@ -1,56 +1,56 @@
 <template>
-  <AppPage eyebrow="用户管理" title="用户管理" :stats="stats">
+  <AppPage :eyebrow="locale.t('page.users.title')" :title="locale.t('page.users.title')" :stats="stats">
     <template #actions>
       <el-button v-if="user.hasPermission('system:user:manage')" type="primary" :icon="Plus" @click="openCreate">
-        新建用户
+        {{ locale.t('page.users.create') }}
       </el-button>
     </template>
 
     <el-form class="filter-form" :model="query" inline>
-      <el-form-item label="关键词">
-        <el-input v-model="query.keyword" clearable placeholder="账号 / 姓名" />
+      <el-form-item :label="locale.t('page.users.keyword')">
+        <el-input v-model="query.keyword" clearable :placeholder="locale.t('page.users.keywordPlaceholder')" />
       </el-form-item>
-      <el-form-item label="用户类型">
-        <el-select v-model="query.userType" clearable placeholder="全部类型" style="width: 140px">
-          <el-option label="平台用户" value="platform" />
-          <el-option label="广告主用户" value="advertiser" />
-          <el-option label="代理商用户" value="agent" />
+      <el-form-item :label="locale.t('page.users.userType')">
+        <el-select v-model="query.userType" clearable :placeholder="locale.t('page.users.allTypes')" style="width: 140px">
+          <el-option :label="getUserTypeLabel('platform')" value="platform" />
+          <el-option :label="getUserTypeLabel('advertiser')" value="advertiser" />
+          <el-option :label="getUserTypeLabel('agent')" value="agent" />
         </el-select>
       </el-form-item>
-      <el-form-item label="状态">
-        <el-select v-model="query.status" clearable placeholder="全部状态" style="width: 140px">
-          <el-option label="启用" value="active" />
-          <el-option label="停用" value="disabled" />
+      <el-form-item :label="locale.t('page.users.status')">
+        <el-select v-model="query.status" clearable :placeholder="locale.t('page.users.allStatus')" style="width: 140px">
+          <el-option :label="getStatusLabel('partner', 'active', '启用')" value="active" />
+          <el-option :label="getStatusLabel('partner', 'disabled', '停用')" value="disabled" />
         </el-select>
       </el-form-item>
       <el-form-item>
-        <el-button type="primary" :icon="Search" @click="loadUsers">查询</el-button>
-        <el-button :icon="Refresh" @click="resetQuery">重置</el-button>
+        <el-button type="primary" :icon="Search" @click="loadUsers">{{ locale.t('common.search') }}</el-button>
+        <el-button :icon="Refresh" @click="resetQuery">{{ locale.t('common.reset') }}</el-button>
       </el-form-item>
     </el-form>
 
     <el-table v-loading="loading" :data="users" class="data-table" row-key="id">
-      <el-table-column prop="username" label="账号" min-width="140" />
-      <el-table-column prop="realName" label="姓名" min-width="130" />
-      <el-table-column label="类型" width="120">
-        <template #default="{ row }">{{ userTypeMap[row.userType] || row.userType || '-' }}</template>
+      <el-table-column prop="username" :label="locale.t('page.users.username')" min-width="140" />
+      <el-table-column prop="realName" :label="locale.t('page.users.realName')" min-width="130" />
+      <el-table-column :label="locale.t('page.users.type')" width="120">
+        <template #default="{ row }">{{ getUserTypeLabel(row.userType) }}</template>
       </el-table-column>
-      <el-table-column prop="phone" label="手机号" min-width="130" />
-      <el-table-column prop="email" label="邮箱" min-width="170" />
-      <el-table-column prop="advertiserId" label="广告主ID" width="110" />
-      <el-table-column prop="agentId" label="代理商ID" width="110" />
-      <el-table-column label="状态" width="100">
+      <el-table-column prop="phone" :label="locale.t('page.users.phone')" min-width="130" />
+      <el-table-column prop="email" :label="locale.t('page.users.email')" min-width="170" />
+      <el-table-column prop="advertiserId" :label="locale.t('page.users.advertiserId')" width="110" />
+      <el-table-column prop="agentId" :label="locale.t('page.users.agentId')" width="110" />
+      <el-table-column :label="locale.t('page.users.status')" width="100">
         <template #default="{ row }">
           <el-tag :type="row.status === 'active' ? 'success' : 'warning'" effect="dark">
-            {{ row.status === 'active' ? '启用' : '停用' }}
+            {{ getStatusLabel('partner', row.status, row.status === 'active' ? '启用' : '停用') }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="createTime" label="创建时间" min-width="170" />
-      <el-table-column label="操作" min-width="260" class-name="operation-column">
+      <el-table-column prop="createTime" :label="locale.t('page.users.createTime')" min-width="170" />
+      <el-table-column :label="locale.t('common.operation')" width="200" fixed="right" class-name="operation-column">
         <template #default="{ row }">
           <el-button v-if="user.hasPermission('system:user:manage')" link type="primary" @click="openEdit(row)">
-            编辑
+            {{ locale.t('common.edit') }}
           </el-button>
           <el-button
             v-if="user.hasPermission('system:user:manage') && row.status === 'active'"
@@ -58,7 +58,7 @@
             type="warning"
             @click="handleDisable(row.id)"
           >
-            停用
+            {{ locale.t('page.users.disable') }}
           </el-button>
           <el-button
             v-else-if="user.hasPermission('system:user:manage')"
@@ -66,15 +66,15 @@
             type="success"
             @click="handleEnable(row.id)"
           >
-            启用
+            {{ locale.t('page.users.enable') }}
           </el-button>
           <el-button v-if="user.hasPermission('system:user:manage')" link type="danger" @click="handleResetPassword(row)">
-            重置密码
+            {{ locale.t('page.users.resetPassword') }}
           </el-button>
         </template>
       </el-table-column>
       <template #empty>
-        <el-empty description="暂无用户，请先新建用户或执行 RBAC 初始化脚本" />
+        <el-empty :description="locale.t('page.users.empty')" />
       </template>
     </el-table>
 
@@ -93,43 +93,43 @@
     <section v-if="user.hasPermission('system:user:manage')" class="login-log-panel">
       <div class="panel-head">
         <div>
-          <p class="eyebrow">账号安全</p>
-          <h3>登录日志</h3>
+          <p class="eyebrow">{{ locale.t('page.users.accountSecurity') }}</p>
+          <h3>{{ locale.t('page.users.loginLogs') }}</h3>
         </div>
         <el-form class="filter-form compact" :model="logQuery" inline>
-          <el-form-item label="账号">
-            <el-input v-model="logQuery.username" clearable placeholder="登录账号" style="width: 150px" />
+          <el-form-item :label="locale.t('page.users.username')">
+            <el-input v-model="logQuery.username" clearable :placeholder="locale.t('page.users.loginAccount')" style="width: 150px" />
           </el-form-item>
-          <el-form-item label="结果">
-            <el-select v-model="logQuery.loginStatus" clearable placeholder="全部" style="width: 120px">
-              <el-option label="成功" value="success" />
-              <el-option label="失败" value="fail" />
+          <el-form-item :label="locale.t('page.users.result')">
+            <el-select v-model="logQuery.loginStatus" clearable :placeholder="locale.t('page.users.allResults')" style="width: 120px">
+              <el-option :label="locale.t('status.loginResult.success')" value="success" />
+              <el-option :label="locale.t('status.loginResult.fail')" value="fail" />
             </el-select>
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" :icon="Search" @click="loadLoginLogs">查询</el-button>
-            <el-button :icon="Refresh" @click="resetLogQuery">重置</el-button>
+            <el-button type="primary" :icon="Search" @click="loadLoginLogs">{{ locale.t('common.search') }}</el-button>
+            <el-button :icon="Refresh" @click="resetLogQuery">{{ locale.t('common.reset') }}</el-button>
           </el-form-item>
         </el-form>
       </div>
 
       <el-table v-loading="logLoading" :data="loginLogs" class="data-table log-table" row-key="id">
-        <el-table-column prop="username" label="账号" min-width="130" />
-        <el-table-column label="结果" width="100">
+        <el-table-column prop="username" :label="locale.t('page.users.username')" min-width="130" />
+        <el-table-column :label="locale.t('page.users.result')" width="100">
           <template #default="{ row }">
             <el-tag :type="row.loginStatus === 'success' ? 'success' : 'danger'" effect="dark">
-              {{ row.loginStatus === 'success' ? '成功' : '失败' }}
+              {{ row.loginStatus === 'success' ? locale.t('status.loginResult.success') : locale.t('status.loginResult.fail') }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="ipAddress" label="IP 地址" min-width="140" />
-        <el-table-column prop="failReason" label="失败原因" min-width="180">
+        <el-table-column prop="ipAddress" :label="locale.t('page.users.ipAddress')" min-width="140" />
+        <el-table-column prop="failReason" :label="locale.t('page.users.failReason')" min-width="180">
           <template #default="{ row }">{{ row.failReason || '-' }}</template>
         </el-table-column>
-        <el-table-column prop="loginTime" label="登录时间" min-width="170" />
-        <el-table-column prop="userAgent" label="浏览器标识" min-width="260" show-overflow-tooltip />
+        <el-table-column prop="loginTime" :label="locale.t('page.users.loginTime')" min-width="170" />
+        <el-table-column prop="userAgent" :label="locale.t('page.users.userAgent')" min-width="260" show-overflow-tooltip />
         <template #empty>
-          <el-empty description="暂无登录日志" />
+          <el-empty :description="locale.t('page.users.loginLogEmpty')" />
         </template>
       </el-table>
 
@@ -146,59 +146,63 @@
       </div>
     </section>
 
-    <el-drawer v-model="drawerVisible" :title="editingId ? '编辑用户' : '新建用户'" size="560px">
+    <el-drawer v-model="drawerVisible" :title="editingId ? locale.t('page.users.edit') : locale.t('page.users.create')" size="560px">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
-        <el-form-item label="登录账号" prop="username">
-          <el-input v-model="form.username" placeholder="请输入登录账号" />
+        <el-form-item :label="locale.t('page.users.loginAccount')" prop="username">
+          <el-input v-model="form.username" :placeholder="locale.t('page.users.usernamePlaceholder')" />
         </el-form-item>
-        <el-form-item v-if="!editingId" label="初始密码">
-          <el-input v-model="form.password" placeholder="默认 admin123" show-password />
+        <el-form-item v-if="!editingId" :label="locale.t('page.users.initialPassword')">
+          <el-input v-model="form.password" :placeholder="locale.t('page.users.passwordDefault')" show-password />
         </el-form-item>
-        <el-form-item label="姓名" prop="realName">
-          <el-input v-model="form.realName" placeholder="请输入姓名" />
+        <el-form-item :label="locale.t('page.users.realName')" prop="realName">
+          <el-input v-model="form.realName" :placeholder="locale.t('page.users.realNamePlaceholder')" />
         </el-form-item>
-        <el-form-item label="用户类型">
+        <el-form-item :label="locale.t('page.users.userType')">
           <el-select v-model="form.userType" style="width: 100%">
-            <el-option label="平台用户" value="platform" />
-            <el-option label="广告主用户" value="advertiser" />
-            <el-option label="代理商用户" value="agent" />
+            <el-option :label="getUserTypeLabel('platform')" value="platform" />
+            <el-option :label="getUserTypeLabel('advertiser')" value="advertiser" />
+            <el-option :label="getUserTypeLabel('agent')" value="agent" />
           </el-select>
         </el-form-item>
-        <el-form-item label="广告主ID">
-          <el-input-number v-model="form.advertiserId" :min="1" controls-position="right" style="width: 100%" />
+        <el-form-item v-if="form.userType === 'advertiser'" :label="locale.t('page.users.advertiserId')" prop="advertiserId">
+          <el-select v-model="form.advertiserId" filterable :loading="advertiserLoading" :placeholder="locale.t('page.users.advertiserPlaceholder')" style="width: 100%">
+            <el-option v-for="item in advertiserOptions" :key="item.id" :label="getAdvertiserLabel(item)" :value="item.id" />
+          </el-select>
         </el-form-item>
-        <el-form-item label="代理商ID">
-          <el-input-number v-model="form.agentId" :min="1" controls-position="right" style="width: 100%" />
+        <el-form-item v-if="form.userType === 'agent'" :label="locale.t('page.users.agentId')" prop="agentId">
+          <el-select v-model="form.agentId" filterable :loading="agentLoading" :placeholder="locale.t('page.users.agentPlaceholder')" style="width: 100%">
+            <el-option v-for="item in agentOptions" :key="item.id" :label="getAgentLabel(item)" :value="item.id" />
+          </el-select>
         </el-form-item>
-        <el-form-item label="手机号">
-          <el-input v-model="form.phone" placeholder="请输入手机号" />
+        <el-form-item :label="locale.t('page.users.phone')" prop="phone">
+          <el-input v-model="form.phone" :placeholder="locale.t('page.users.phonePlaceholder')" />
         </el-form-item>
-        <el-form-item label="邮箱">
-          <el-input v-model="form.email" placeholder="请输入邮箱" />
+        <el-form-item :label="locale.t('page.users.email')" prop="email">
+          <el-input v-model="form.email" :placeholder="locale.t('page.users.emailPlaceholder')" />
         </el-form-item>
-        <el-form-item label="状态">
+        <el-form-item :label="locale.t('page.users.status')">
           <el-radio-group v-model="form.status">
-            <el-radio-button label="active">启用</el-radio-button>
-            <el-radio-button label="disabled">停用</el-radio-button>
+            <el-radio-button label="active">{{ getStatusLabel('partner', 'active', '启用') }}</el-radio-button>
+            <el-radio-button label="disabled">{{ getStatusLabel('partner', 'disabled', '停用') }}</el-radio-button>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="角色">
-          <el-select v-model="form.roleIds" multiple clearable placeholder="请选择角色" style="width: 100%">
-            <el-option v-for="role in roles" :key="role.id" :label="role.roleName" :value="role.id" />
+        <el-form-item :label="locale.t('page.users.role')">
+          <el-select v-model="form.roleIds" multiple clearable :placeholder="locale.t('page.users.selectRole')" style="width: 100%">
+            <el-option v-for="role in roles" :key="role.id" :label="getRoleName(role)" :value="role.id" />
           </el-select>
         </el-form-item>
       </el-form>
 
       <template #footer>
-        <el-button @click="drawerVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
+        <el-button @click="drawerVisible = false">{{ locale.t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="saving" @click="handleSave">{{ locale.t('common.save') }}</el-button>
       </template>
     </el-drawer>
   </AppPage>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Plus, Refresh, Search } from '@element-plus/icons-vue'
 import AppPage from '@/components/AppPage.vue'
@@ -217,8 +221,12 @@ import {
   type SysUser,
   type SysUserPayload
 } from '@/api/system'
+import { useLocaleStore } from '@/stores/locale'
 import { useUserStore } from '@/stores/user'
+import { isValidEmail, isValidPhone } from '@/utils/validators'
+import { fetchAdvertisers, fetchAgents, type Advertiser, type Agent } from '@/api/partners'
 
+const locale = useLocaleStore()
 const user = useUserStore()
 const loading = ref(false)
 const saving = ref(false)
@@ -227,9 +235,13 @@ const editingId = ref<number>()
 const users = ref<SysUser[]>([])
 const roles = ref<SysRole[]>([])
 const loginLogs = ref<SysLoginLog[]>([])
+const advertiserOptions = ref<Advertiser[]>([])
+const agentOptions = ref<Agent[]>([])
 const total = ref(0)
 const logTotal = ref(0)
 const formRef = ref<FormInstance>()
+const advertiserLoading = ref(false)
+const agentLoading = ref(false)
 const query = reactive({ keyword: '', userType: '', status: '', page: 1, size: 10 })
 const logQuery = reactive({ username: '', loginStatus: '', page: 1, size: 8 })
 const logLoading = ref(false)
@@ -247,23 +259,49 @@ const form = reactive<SysUserPayload>({
   roleIds: []
 })
 
-const rules: FormRules = {
-  username: [{ required: true, message: '请输入登录账号', trigger: 'blur' }],
-  realName: [{ required: true, message: '请输入姓名', trigger: 'blur' }]
-}
-
-const userTypeMap: Record<string, string> = {
-  platform: '平台用户',
-  advertiser: '广告主用户',
-  agent: '代理商用户'
-}
+const rules = computed<FormRules>(() => ({
+  username: [{ required: true, message: locale.t('page.users.usernameRequired'), trigger: 'blur' }],
+  realName: [{ required: true, message: locale.t('page.users.realNameRequired'), trigger: 'blur' }],
+  advertiserId: [{ required: form.userType === 'advertiser', message: locale.t('page.users.advertiserRequired'), trigger: 'change' }],
+  agentId: [{ required: form.userType === 'agent', message: locale.t('page.users.agentRequired'), trigger: 'change' }],
+  phone: [{ validator: validatePhone, trigger: 'blur' }],
+  email: [{ validator: validateEmail, trigger: 'blur' }]
+}))
 
 const stats = computed(() => [
-  { label: '全部用户', value: total.value },
-  { label: '启用', value: users.value.filter((item) => item.status === 'active').length },
-  { label: '停用', value: users.value.filter((item) => item.status === 'disabled').length },
-  { label: '角色数量', value: roles.value.length }
+  { label: locale.t('page.users.total'), value: total.value },
+  { label: getStatusLabel('partner', 'active', '启用'), value: users.value.filter((item) => item.status === 'active').length },
+  { label: getStatusLabel('partner', 'disabled', '停用'), value: users.value.filter((item) => item.status === 'disabled').length },
+  { label: locale.t('page.users.roleCount'), value: roles.value.length }
 ])
+
+function getStatusLabel(group: string, value: string, fallback: string) {
+  return locale.t(`status.${group}.${value}`, fallback)
+}
+
+function getUserTypeLabel(value?: string) {
+  return value ? locale.t(`status.userType.${value}`, value) : '-'
+}
+
+function getRoleName(role: SysRole) {
+  return locale.t(`role.${role.roleCode}.name`, role.roleName)
+}
+
+function getAdvertiserLabel(item: Advertiser) {
+  return `${item.advertiserName}（${item.advertiserCode}）`
+}
+
+function getAgentLabel(item: Agent) {
+  return `${item.agentName}（${item.agentCode}）`
+}
+
+function validatePhone(_rule: unknown, value: string, callback: (error?: Error) => void) {
+  callback(isValidPhone(value) ? undefined : new Error(locale.t('common.invalidPhone')))
+}
+
+function validateEmail(_rule: unknown, value: string, callback: (error?: Error) => void) {
+  callback(isValidEmail(value) ? undefined : new Error(locale.t('common.invalidEmail')))
+}
 
 function resetForm() {
   editingId.value = undefined
@@ -311,6 +349,22 @@ async function loadRoles() {
   roles.value = result.data
 }
 
+async function loadPartners() {
+  advertiserLoading.value = true
+  agentLoading.value = true
+  try {
+    const [advertiserResult, agentResult] = await Promise.all([
+      fetchAdvertisers({ status: 'active', page: 1, size: 200 }),
+      fetchAgents({ status: 'active', page: 1, size: 200 })
+    ])
+    advertiserOptions.value = advertiserResult.data.records
+    agentOptions.value = agentResult.data.records
+  } finally {
+    advertiserLoading.value = false
+    agentLoading.value = false
+  }
+}
+
 function resetQuery() {
   Object.assign(query, { keyword: '', userType: '', status: '', page: 1 })
   loadUsers()
@@ -350,13 +404,19 @@ async function handleSave() {
   saving.value = true
   try {
     const payload = { ...form }
+    if (payload.userType !== 'advertiser') {
+      payload.advertiserId = undefined
+    }
+    if (payload.userType !== 'agent') {
+      payload.agentId = undefined
+    }
     if (editingId.value) {
       delete payload.password
       await updateSystemUser(editingId.value, payload)
-      ElMessage.success('用户已更新')
+      ElMessage.success(locale.t('page.users.updated'))
     } else {
       await createSystemUser(payload)
-      ElMessage.success('用户已创建')
+      ElMessage.success(locale.t('page.users.created'))
     }
     drawerVisible.value = false
     loadUsers()
@@ -366,35 +426,48 @@ async function handleSave() {
 }
 
 async function handleDisable(id: number) {
-  await ElMessageBox.confirm('确认停用该账号吗？停用后将无法登录。', '停用账号', { type: 'warning' })
+  await ElMessageBox.confirm(locale.t('page.users.disableConfirm'), locale.t('page.users.disableTitle'), { type: 'warning' })
   await disableSystemUser(id)
-  ElMessage.success('账号已停用')
+  ElMessage.success(locale.t('page.users.disabled'))
   loadUsers()
 }
 
 async function handleEnable(id: number) {
   await enableSystemUser(id)
-  ElMessage.success('账号已启用')
+  ElMessage.success(locale.t('page.users.enabled'))
   loadUsers()
 }
 
 async function handleResetPassword(row: SysUser) {
-  const result = await ElMessageBox.prompt(`请输入 ${row.username} 的新密码`, '重置密码', {
-    confirmButtonText: '确认重置',
-    cancelButtonText: '取消',
+  const result = await ElMessageBox.prompt(locale.t('page.users.resetPrompt').replace('{username}', row.username), locale.t('page.users.resetPassword'), {
+    confirmButtonText: locale.t('page.users.resetConfirm'),
+    cancelButtonText: locale.t('common.cancel'),
     inputValue: 'admin123',
     inputPattern: /\S{6,}/,
-    inputErrorMessage: '密码至少 6 位'
+    inputErrorMessage: locale.t('page.users.passwordMin')
   })
   await resetSystemUserPassword(row.id, result.value)
-  ElMessage.success('密码已重置')
+  ElMessage.success(locale.t('page.users.passwordReset'))
 }
 
 onMounted(() => {
   loadUsers()
   loadRoles()
   loadLoginLogs()
+  loadPartners()
 })
+
+watch(
+  () => form.userType,
+  (value) => {
+    if (value !== 'advertiser') {
+      form.advertiserId = undefined
+    }
+    if (value !== 'agent') {
+      form.agentId = undefined
+    }
+  }
+)
 </script>
 
 <style scoped>

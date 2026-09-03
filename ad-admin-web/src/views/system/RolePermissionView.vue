@@ -1,17 +1,17 @@
 <template>
-  <AppPage eyebrow="权限管理" title="权限管理" :stats="stats">
+  <AppPage :eyebrow="locale.t('page.roles.title')" :title="locale.t('page.roles.title')" :stats="stats">
     <div class="role-auth-layout">
       <section class="role-list panel-card">
         <div class="panel-title">
           <div>
-            <p>角色列表</p>
-            <strong>选择一个角色进行授权</strong>
+            <p>{{ locale.t('page.roles.roleList') }}</p>
+            <strong>{{ locale.t('page.roles.roleListHint') }}</strong>
           </div>
           <el-button :icon="Refresh" circle @click="loadAll" />
         </div>
 
         <el-skeleton v-if="loading" :rows="5" animated />
-        <el-empty v-else-if="!roles.length" description="暂无角色，请先执行 RBAC 初始化脚本" />
+        <el-empty v-else-if="!roles.length" :description="locale.t('page.roles.empty')" />
         <button
           v-for="role in roles"
           v-else
@@ -21,45 +21,45 @@
           type="button"
           @click="selectRole(role.id)"
         >
-          <span>{{ role.roleName }}</span>
+          <span>{{ getRoleName(role) }}</span>
           <em>{{ role.roleCode }}</em>
-          <small>{{ role.remark || '暂无说明' }}</small>
+          <small>{{ getRoleRemark(role) }}</small>
         </button>
       </section>
 
       <section class="permission-panel panel-card">
         <div class="panel-title permission-title">
           <div>
-            <p>权限配置</p>
-            <strong>{{ selectedRole?.roleName || '未选择角色' }}</strong>
+            <p>{{ locale.t('page.roles.permissionConfig') }}</p>
+            <strong>{{ selectedRole ? getRoleName(selectedRole) : locale.t('page.roles.unselected') }}</strong>
           </div>
           <div class="toolbar">
-            <el-button :disabled="!selectedRoleId" @click="checkMenuOnly">只选菜单</el-button>
-            <el-button :disabled="!selectedRoleId" @click="checkAll">全选</el-button>
-            <el-button :disabled="!selectedRoleId" @click="clearChecked">清空</el-button>
+            <el-button :disabled="!selectedRoleId" @click="checkMenuOnly">{{ locale.t('page.roles.menuOnly') }}</el-button>
+            <el-button :disabled="!selectedRoleId" @click="checkAll">{{ locale.t('page.roles.checkAll') }}</el-button>
+            <el-button :disabled="!selectedRoleId" @click="clearChecked">{{ locale.t('page.roles.clear') }}</el-button>
             <el-button
               type="primary"
               :loading="saving"
               :disabled="!selectedRoleId || !user.hasPermission('system:role:grant')"
               @click="handleSave"
             >
-              保存授权
+              {{ locale.t('page.roles.saveGrant') }}
             </el-button>
           </div>
         </div>
 
         <el-alert
           v-if="!user.hasPermission('system:role:grant')"
-          title="当前账号没有角色授权权限，只能查看权限配置。"
+          :title="locale.t('page.roles.readonlyAlert')"
           type="warning"
           show-icon
           :closable="false"
         />
 
-        <el-empty v-if="!selectedRoleId" description="请先从左侧选择角色" />
+        <el-empty v-if="!selectedRoleId" :description="locale.t('page.roles.selectFirst')" />
         <template v-else>
           <div class="permission-section">
-            <h3>菜单权限</h3>
+            <h3>{{ locale.t('page.roles.menuPermission') }}</h3>
             <el-checkbox-group v-model="checkedMenuIds" :disabled="!user.hasPermission('system:role:grant')">
               <div class="permission-grid">
                 <el-checkbox v-for="item in menuPermissions" :key="item.id" :label="item.id" border>
@@ -71,7 +71,7 @@
           </div>
 
           <div class="permission-section">
-            <h3>按钮 / 操作权限</h3>
+            <h3>{{ locale.t('page.roles.actionPermission') }}</h3>
             <el-checkbox-group v-model="checkedMenuIds" :disabled="!user.hasPermission('system:role:grant')">
               <div class="permission-grid action-grid">
                 <el-checkbox v-for="item in actionPermissions" :key="item.id" :label="item.id" border>
@@ -100,8 +100,10 @@ import {
   type SysMenu,
   type SysRole
 } from '@/api/system'
+import { useLocaleStore } from '@/stores/locale'
 import { useUserStore } from '@/stores/user'
 
+const locale = useLocaleStore()
 const user = useUserStore()
 const loading = ref(false)
 const saving = ref(false)
@@ -114,10 +116,10 @@ const selectedRole = computed(() => roles.value.find((item) => item.id === selec
 const menuPermissions = computed(() => menus.value.filter((item) => item.menuPath?.startsWith('/')))
 const actionPermissions = computed(() => menus.value.filter((item) => item.menuPath?.startsWith('#')))
 const stats = computed(() => [
-  { label: '角色数量', value: roles.value.length },
-  { label: '菜单权限', value: menuPermissions.value.length },
-  { label: '操作权限', value: actionPermissions.value.length },
-  { label: '已勾选', value: checkedMenuIds.value.length }
+  { label: locale.t('page.roles.roleCount'), value: roles.value.length },
+  { label: locale.t('page.roles.menuCount'), value: menuPermissions.value.length },
+  { label: locale.t('page.roles.actionCount'), value: actionPermissions.value.length },
+  { label: locale.t('page.roles.checkedCount'), value: checkedMenuIds.value.length }
 ])
 
 const labelMap: Record<string, string> = {
@@ -154,7 +156,16 @@ const labelMap: Record<string, string> = {
 }
 
 function getPermissionLabel(item: SysMenu) {
-  return labelMap[item.permissionCode || ''] || item.menuName || item.menuPath
+  const code = item.permissionCode || ''
+  return code ? locale.t(`permission.${code}`, labelMap[code] || item.menuName || item.menuPath) : item.menuName || item.menuPath
+}
+
+function getRoleName(role: SysRole) {
+  return locale.t(`role.${role.roleCode}.name`, role.roleName)
+}
+
+function getRoleRemark(role: SysRole) {
+  return locale.t(`role.${role.roleCode}.remark`, role.remark || locale.t('page.roles.noRemark'))
 }
 
 async function loadAll() {
@@ -196,7 +207,7 @@ async function handleSave() {
   saving.value = true
   try {
     await saveRoleMenus(selectedRoleId.value, checkedMenuIds.value)
-    ElMessage.success('权限配置已保存')
+    ElMessage.success(locale.t('page.roles.saved'))
     if (user.userInfo?.roles.some((role) => role === selectedRole.value?.roleCode)) {
       await user.fetchUserInfo()
     }

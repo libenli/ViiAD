@@ -1,25 +1,37 @@
 <template>
-  <AppPage eyebrow="广告业务" :title="isEdit ? '编辑素材' : '上传素材'" :stats="stats">
+  <AppPage :eyebrow="locale.t('page.business')" :title="isEdit ? locale.t('page.materials.editTitle') : locale.t('page.materials.upload')" :stats="stats">
     <el-form ref="formRef" class="entity-form" :model="form" :rules="rules" label-width="110px">
-      <el-form-item label="所属广告ID" prop="adId">
-        <el-input-number v-model="form.adId" :min="1" controls-position="right" />
-      </el-form-item>
-      <el-form-item label="素材名称" prop="materialName">
-        <el-input v-model="form.materialName" maxlength="80" show-word-limit placeholder="请输入素材名称" />
-      </el-form-item>
-      <el-form-item label="素材类型" prop="materialType">
-        <el-select v-model="form.materialType" placeholder="请选择素材类型">
-          <el-option v-for="item in materialTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+      <el-form-item :label="locale.t('page.materials.adOwnerId')" prop="adId">
+        <el-select
+          v-model="form.adId"
+          filterable
+          :loading="adLoading"
+          :placeholder="locale.t('page.materials.adPlaceholder')"
+        >
+          <el-option v-for="ad in adOptions" :key="ad.id" :label="getAdLabel(ad)" :value="ad.id">
+            <div class="option-row">
+              <span>{{ ad.adName }}</span>
+              <small>{{ ad.adCode }} / {{ ad.regionCode || locale.t('page.plans.noRegion') }}</small>
+            </div>
+          </el-option>
         </el-select>
       </el-form-item>
-      <el-form-item label="素材文件" prop="fileUrl">
+      <el-form-item :label="locale.t('page.materials.name')" prop="materialName">
+        <el-input v-model="form.materialName" maxlength="80" show-word-limit :placeholder="locale.t('page.materials.materialNameRequired')" />
+      </el-form-item>
+      <el-form-item :label="locale.t('page.materials.type')" prop="materialType">
+        <el-select v-model="form.materialType" :placeholder="locale.t('page.materials.materialTypeRequired')">
+          <el-option v-for="item in materialTypeOptions" :key="item.value" :label="getMaterialTypeLabel(item.value)" :value="item.value" />
+        </el-select>
+      </el-form-item>
+      <el-form-item :label="locale.t('page.materials.file')" prop="fileUrl">
         <div class="upload-field">
           <el-alert
             class="upload-hint"
             type="info"
             show-icon
             :closable="false"
-            title="支持 JPG/PNG/GIF/WebP 图片、MP4/WebM 视频、HTML/ZIP；图片建议不超过 20MB，视频不超过 500MB。"
+            :title="locale.t('page.materials.fileHint')"
           />
           <el-upload
             drag
@@ -28,8 +40,8 @@
             :before-upload="beforeMaterialUpload"
           >
             <div class="upload-copy">
-              <strong>{{ uploadingMaterial ? '正在上传素材...' : '点击或拖拽上传图片 / 视频 / H5文件' }}</strong>
-              <span>上传成功后会自动生成 OSS 地址，并自动识别类型、大小、尺寸和时长</span>
+              <strong>{{ uploadingMaterial ? locale.t('page.materials.uploading') : locale.t('page.materials.uploadCopy') }}</strong>
+              <span>{{ locale.t('page.materials.uploadDesc') }}</span>
             </div>
           </el-upload>
           <el-progress
@@ -39,32 +51,32 @@
           />
           <el-alert v-if="materialUploadError" type="error" show-icon :closable="false" :title="materialUploadError">
             <template #default>
-              <el-button size="small" type="danger" plain @click="retryMaterialUpload">重新上传</el-button>
+              <el-button size="small" type="danger" plain @click="retryMaterialUpload">{{ locale.t('page.materials.retryUpload') }}</el-button>
             </template>
           </el-alert>
-          <el-input v-model="form.fileUrl" placeholder="上传后自动生成，也可手动粘贴已有 OSS 地址" />
+          <el-input v-model="form.fileUrl" :placeholder="locale.t('page.materials.fileUrlPlaceholder')" />
           <div v-if="form.fileUrl" class="preview-card">
             <div class="preview-head">
-              <strong>素材预览</strong>
-              <el-link :href="form.fileUrl" target="_blank" type="primary">新窗口打开</el-link>
+              <strong>{{ locale.t('page.materials.preview') }}</strong>
+              <el-link :href="form.fileUrl" target="_blank" type="primary">{{ locale.t('page.materials.openNewWindow') }}</el-link>
             </div>
-            <img v-if="form.materialType === 'image'" :src="form.fileUrl" alt="素材预览" />
+            <img v-if="form.materialType === 'image'" :src="form.fileUrl" :alt="locale.t('page.materials.preview')" />
             <video v-else-if="form.materialType === 'video'" :src="form.fileUrl" controls />
             <div v-else class="h5-preview">
-              <span>H5 / ZIP 素材</span>
-              <small>保存后可进入详情页查看最终地址</small>
+              <span>{{ locale.t('page.materials.h5Material') }}</span>
+              <small>{{ locale.t('page.materials.savedDetailHint') }}</small>
             </div>
           </div>
         </div>
       </el-form-item>
-      <el-form-item label="封面地址">
+      <el-form-item :label="locale.t('page.materials.coverUrl')">
         <div class="upload-field">
           <el-upload
             :show-file-list="false"
             :http-request="handleCoverUpload"
             :before-upload="beforeCoverUpload"
           >
-            <el-button :loading="uploadingCover">上传封面</el-button>
+            <el-button :loading="uploadingCover">{{ locale.t('page.materials.uploadCover') }}</el-button>
           </el-upload>
           <el-progress
             v-if="uploadingCover || coverUploadProgress > 0"
@@ -73,29 +85,29 @@
           />
           <el-alert v-if="coverUploadError" type="error" show-icon :closable="false" :title="coverUploadError">
             <template #default>
-              <el-button size="small" type="danger" plain @click="retryCoverUpload">重新上传封面</el-button>
+              <el-button size="small" type="danger" plain @click="retryCoverUpload">{{ locale.t('page.materials.retryCover') }}</el-button>
             </template>
           </el-alert>
-          <el-input v-model="form.coverUrl" placeholder="可选，用于视频或H5预览" />
-          <img v-if="form.coverUrl" class="cover-preview" :src="form.coverUrl" alt="封面预览" />
+          <el-input v-model="form.coverUrl" :placeholder="locale.t('page.materials.coverPlaceholder')" />
+          <img v-if="form.coverUrl" class="cover-preview" :src="form.coverUrl" :alt="locale.t('page.materials.coverPreview')" />
         </div>
       </el-form-item>
-      <el-form-item label="文件大小">
+      <el-form-item :label="locale.t('page.materials.fileSize')">
         <el-input-number v-model="form.fileSize" :min="0" controls-position="right" />
       </el-form-item>
-      <el-form-item label="宽度">
+      <el-form-item :label="locale.t('page.materials.width')">
         <el-input-number v-model="form.width" :min="0" controls-position="right" />
       </el-form-item>
-      <el-form-item label="高度">
+      <el-form-item :label="locale.t('page.materials.height')">
         <el-input-number v-model="form.height" :min="0" controls-position="right" />
       </el-form-item>
-      <el-form-item label="视频时长">
+      <el-form-item :label="locale.t('page.materials.videoDuration')">
         <el-input-number v-model="form.durationSeconds" :min="0" controls-position="right" />
       </el-form-item>
       <el-form-item class="form-actions">
-        <el-button @click="router.back()">返回</el-button>
+        <el-button @click="router.back()">{{ locale.t('common.back') }}</el-button>
         <el-button type="primary" :loading="saving" @click="handleSave">
-          保存
+          {{ locale.t('common.save') }}
         </el-button>
       </el-form-item>
     </el-form>
@@ -115,9 +127,12 @@ import {
   updateMaterial,
   type AdMaterialPayload
 } from '@/api/materials'
+import { fetchAds, type AdOrder } from '@/api/ads'
+import { useLocaleStore } from '@/stores/locale'
 
 const route = useRoute()
 const router = useRouter()
+const locale = useLocaleStore()
 const formRef = ref<FormInstance>()
 const saving = ref(false)
 const uploadingMaterial = ref(false)
@@ -128,12 +143,14 @@ const materialUploadError = ref('')
 const coverUploadError = ref('')
 const lastMaterialFile = ref<File>()
 const lastCoverFile = ref<File>()
+const adLoading = ref(false)
+const adOptions = ref<AdOrder[]>([])
 
 const id = computed(() => Number(route.params.id))
 const isEdit = computed(() => Boolean(route.params.id))
 
 const form = reactive<AdMaterialPayload>({
-  adId: 1,
+  adId: undefined as unknown as number,
   materialName: '',
   materialType: 'image',
   fileUrl: '',
@@ -144,19 +161,37 @@ const form = reactive<AdMaterialPayload>({
   coverUrl: ''
 })
 
-const rules: FormRules = {
-  adId: [{ required: true, message: '请输入所属广告ID', trigger: 'change' }],
-  materialName: [{ required: true, message: '请输入素材名称', trigger: 'blur' }],
-  materialType: [{ required: true, message: '请选择素材类型', trigger: 'change' }],
-  fileUrl: [{ required: true, message: '请上传素材文件或填写文件地址', trigger: 'blur' }]
-}
+const rules = computed<FormRules>(() => ({
+  adId: [{ required: true, message: locale.t('page.materials.adIdRequired'), trigger: 'change' }],
+  materialName: [{ required: true, message: locale.t('page.materials.materialNameRequired'), trigger: 'blur' }],
+  materialType: [{ required: true, message: locale.t('page.materials.materialTypeRequired'), trigger: 'change' }],
+  fileUrl: [{ required: true, message: locale.t('page.materials.fileRequired'), trigger: 'blur' }]
+}))
 
 const stats = computed(() => [
-  { label: '表单模式', value: isEdit.value ? '编辑' : '上传' },
-  { label: '默认状态', value: '草稿' },
-  { label: '主流程', value: '素材' },
-  { label: '下一步', value: '审核' }
+  { label: locale.t('page.ads.formMode'), value: isEdit.value ? locale.t('page.ads.editMode') : locale.t('page.materials.uploadMode') },
+  { label: locale.t('page.ads.defaultStatus'), value: locale.t('status.material.draft') },
+  { label: locale.t('page.ads.mainFlow'), value: locale.t('menu.materials') },
+  { label: locale.t('page.ads.nextStep'), value: locale.t('page.materials.auditStep') }
 ])
+
+function getMaterialTypeLabel(value: string) {
+  return locale.t(`status.materialType.${value}`, materialTypeOptions.find((item) => item.value === value)?.label || value)
+}
+
+function getAdLabel(ad: AdOrder) {
+  return `${ad.adName}（${ad.adCode}）`
+}
+
+async function loadApprovedAds() {
+  adLoading.value = true
+  try {
+    const result = await fetchAds({ status: 'approved', page: 1, size: 200 })
+    adOptions.value = result.data.records
+  } finally {
+    adLoading.value = false
+  }
+}
 
 async function loadDetail() {
   if (!isEdit.value) return
@@ -176,14 +211,14 @@ async function loadDetail() {
 
 async function handleSave() {
   if (uploadingMaterial.value || uploadingCover.value) {
-    ElMessage.warning('文件仍在上传中，请上传完成后再保存')
+    ElMessage.warning(locale.t('page.materials.uploadingWait'))
     return
   }
   await formRef.value?.validate()
   saving.value = true
   try {
     const result = isEdit.value ? await updateMaterial(id.value, form) : await createMaterial(form)
-    ElMessage.success(isEdit.value ? '素材已更新' : '素材已创建')
+    ElMessage.success(isEdit.value ? locale.t('page.materials.updated') : locale.t('page.materials.created'))
     router.replace(`/materials/${result.data.id}`)
   } finally {
     saving.value = false
@@ -199,12 +234,12 @@ function beforeMaterialUpload(file: File) {
     file.name.toLowerCase().endsWith('.htm') ||
     file.name.toLowerCase().endsWith('.zip')
   if (!isSupported) {
-    ElMessage.warning('请上传图片、视频、HTML 或 ZIP 素材文件')
+    ElMessage.warning(locale.t('page.materials.unsupportedFile'))
     return false
   }
   const maxSize = getMaterialMaxSize(file)
   if (file.size > maxSize) {
-    ElMessage.warning(`文件过大，当前限制为 ${formatFileSize(maxSize)}`)
+    ElMessage.warning(locale.t('page.materials.fileTooLarge').replace('{size}', formatFileSize(maxSize)))
     return false
   }
   return true
@@ -214,11 +249,11 @@ function beforeCoverUpload(file: File) {
   coverUploadError.value = ''
   const isImage = file.type.startsWith('image/')
   if (!isImage) {
-    ElMessage.warning('封面请上传图片文件')
+    ElMessage.warning(locale.t('page.materials.coverImageOnly'))
     return false
   }
   if (file.size > 10 * 1024 * 1024) {
-    ElMessage.warning('封面图片不能超过 10MB')
+    ElMessage.warning(locale.t('page.materials.coverTooLarge'))
     return false
   }
   return true
@@ -241,10 +276,10 @@ async function uploadMaterialFile(file: File, options?: UploadRequestOptions) {
     form.fileSize = result.data.size
     applyMaterialType(file)
     await fillMediaMeta(file)
-    ElMessage.success('素材文件上传成功')
+    ElMessage.success(locale.t('page.materials.fileUploaded'))
     options?.onSuccess?.(result)
   } catch (error) {
-    materialUploadError.value = '素材上传失败，请检查网络或 OSS 配置后重试'
+    materialUploadError.value = locale.t('page.materials.fileUploadFailed')
     options?.onError?.(error as never)
   } finally {
     uploadingMaterial.value = false
@@ -265,10 +300,10 @@ async function uploadCoverFile(file: File, options?: UploadRequestOptions) {
       coverUploadProgress.value = percent
     })
     form.coverUrl = result.data.url
-    ElMessage.success('封面上传成功')
+    ElMessage.success(locale.t('page.materials.coverUploaded'))
     options?.onSuccess?.(result)
   } catch (error) {
-    coverUploadError.value = '封面上传失败，请稍后重试'
+    coverUploadError.value = locale.t('page.materials.coverUploadFailed')
     options?.onError?.(error as never)
   } finally {
     uploadingCover.value = false
@@ -360,7 +395,10 @@ function formatFileSize(size: number) {
   return `${Math.round(size / 1024)}KB`
 }
 
-onMounted(loadDetail)
+onMounted(async () => {
+  await loadApprovedAds()
+  await loadDetail()
+})
 </script>
 
 <style scoped>
@@ -429,5 +467,16 @@ onMounted(loadDetail)
 
 .h5-preview small {
   color: #7f9caf;
+}
+
+.option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.option-row small {
+  color: rgba(213, 240, 255, 0.58);
 }
 </style>

@@ -1,33 +1,35 @@
 <template>
-  <AppPage eyebrow="设备投放" :title="isEdit ? '编辑设备' : '新建设备'" :stats="stats">
+  <AppPage :eyebrow="locale.t('page.deviceDelivery')" :title="isEdit ? locale.t('page.devices.editTitle') : locale.t('page.devices.createTitle')" :stats="stats">
     <el-form ref="formRef" class="detail-form" :model="form" :rules="rules" label-width="120px">
-      <el-form-item label="设备名称" prop="deviceName">
-        <el-input v-model="form.deviceName" maxlength="80" show-word-limit placeholder="如：上海万象城北门大屏" />
+      <el-form-item :label="locale.t('page.devices.deviceNumber')" prop="deviceCode">
+        <el-input v-model="form.deviceCode" maxlength="32" :placeholder="locale.t('page.devices.deviceCodePlaceholder')" />
       </el-form-item>
-      <el-form-item label="楼宇ID">
+      <el-form-item :label="locale.t('page.devices.name')" prop="deviceName">
+        <el-input v-model="form.deviceName" maxlength="80" show-word-limit :placeholder="locale.t('page.devices.deviceNamePlaceholder')" />
+      </el-form-item>
+      <el-form-item :label="locale.t('page.devices.buildingId')">
         <el-input-number v-model="form.buildingId" :min="1" controls-position="right" />
       </el-form-item>
-      <el-form-item label="楼层">
-        <el-input v-model="form.floorNo" placeholder="如 B1 / 1F / 12F" />
+      <el-form-item :label="locale.t('page.devices.floor')">
+        <el-input v-model="form.floorNo" :placeholder="locale.t('page.devices.floorPlaceholder')" />
       </el-form-item>
-      <el-form-item label="屏幕尺寸">
-        <el-input v-model="form.screenSize" placeholder="如 55寸 / 86寸 / LED大屏" />
+      <el-form-item :label="locale.t('page.devices.screenSize')">
+        <el-input v-model="form.screenSize" :placeholder="locale.t('page.devices.screenPlaceholder')" />
       </el-form-item>
-      <el-form-item label="分辨率">
-        <el-input v-model="form.resolution" placeholder="如 1920x1080" />
+      <el-form-item :label="locale.t('page.devices.resolution')">
+        <el-input v-model="form.resolution" :placeholder="locale.t('page.devices.resolutionPlaceholder')" />
       </el-form-item>
-      <el-form-item label="IP地址">
-        <el-input v-model="form.ipAddress" placeholder="如 192.168.1.18" />
+      <el-form-item :label="locale.t('page.devices.ip')">
+        <el-input v-model="form.ipAddress" :placeholder="locale.t('page.devices.ipPlaceholder')" />
       </el-form-item>
-      <el-form-item label="MAC地址">
-        <el-input v-model="form.macAddress" placeholder="如 AA:BB:CC:DD:EE:FF" />
+      <el-form-item :label="locale.t('page.devices.mac')">
+        <el-input v-model="form.macAddress" :placeholder="locale.t('page.devices.macPlaceholder')" />
       </el-form-item>
       <el-form-item class="form-actions">
-        <el-button @click="router.back()">返回</el-button>
+        <el-button @click="router.back()">{{ locale.t('common.back') }}</el-button>
         <el-button type="primary" :loading="saving" @click="handleSave">
-          {{ saving ? '保存中...' : '保存设备' }}
+          {{ saving ? locale.t('page.plans.saving') : locale.t('page.devices.saveDevice') }}
         </el-button>
-        <el-button @click="router.push('/devices')">取消</el-button>
       </el-form-item>
     </el-form>
   </AppPage>
@@ -40,14 +42,17 @@ import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage } from 'element-plus'
 import AppPage from '@/components/AppPage.vue'
 import { createDevice, fetchDeviceDetail, updateDevice, type AdDevicePayload } from '@/api/devices'
+import { useLocaleStore } from '@/stores/locale'
 
 const route = useRoute()
 const router = useRouter()
+const locale = useLocaleStore()
 const formRef = ref<FormInstance>()
 const saving = ref(false)
 const isEdit = computed(() => Boolean(route.params.id))
 
 const form = reactive({
+  deviceCode: '',
   deviceName: '',
   buildingId: undefined as number | undefined,
   floorNo: '',
@@ -58,18 +63,20 @@ const form = reactive({
 })
 
 const stats = computed(() => [
-  { label: '表单模式', value: isEdit.value ? '编辑' : '新建' },
-  { label: '默认状态', value: '启用' },
-  { label: '默认在线', value: '离线' },
-  { label: '默认故障', value: '正常' }
+  { label: locale.t('page.ads.formMode'), value: isEdit.value ? locale.t('page.ads.editMode') : locale.t('page.ads.newMode') },
+  { label: locale.t('page.ads.defaultStatus'), value: locale.t('status.device.active') },
+  { label: locale.t('page.devices.defaultOnline'), value: locale.t('status.online.offline') },
+  { label: locale.t('page.devices.defaultFault'), value: locale.t('status.fault.normal') }
 ])
 
-const rules: FormRules = {
-  deviceName: [{ required: true, message: '请输入设备名称', trigger: 'blur' }]
-}
+const rules = computed<FormRules>(() => ({
+  deviceCode: [{ required: true, message: locale.t('page.devices.deviceCodeRequired'), trigger: 'blur' }],
+  deviceName: [{ required: true, message: locale.t('page.devices.deviceNameRequired'), trigger: 'blur' }]
+}))
 
 function buildPayload(): AdDevicePayload {
   return {
+    deviceCode: form.deviceCode,
     deviceName: form.deviceName,
     buildingId: form.buildingId,
     floorNo: form.floorNo,
@@ -86,6 +93,7 @@ async function loadDetail() {
   }
   const result = await fetchDeviceDetail(Number(route.params.id))
   const device = result.data
+  form.deviceCode = device.deviceCode || ''
   form.deviceName = device.deviceName
   form.buildingId = device.buildingId
   form.floorNo = device.floorNo || ''
@@ -105,7 +113,7 @@ async function handleSave() {
     const result = isEdit.value
       ? await updateDevice(Number(route.params.id), buildPayload())
       : await createDevice(buildPayload())
-    ElMessage.success(isEdit.value ? '设备已保存' : '设备已创建')
+    ElMessage.success(isEdit.value ? locale.t('page.devices.saved') : locale.t('page.devices.created'))
     router.push(`/devices/${result.data.id}`)
   } finally {
     saving.value = false

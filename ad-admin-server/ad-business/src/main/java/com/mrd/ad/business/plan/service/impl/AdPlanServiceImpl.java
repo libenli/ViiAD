@@ -82,7 +82,7 @@ public class AdPlanServiceImpl implements AdPlanService {
             wrapper.eq(AdPlan::getAdId, query.getAdId());
         }
         if (StringUtils.isNotBlank(query.getRegionCode())) {
-            wrapper.eq(AdPlan::getRegionCode, query.getRegionCode());
+            wrapper.like(AdPlan::getRegionCode, query.getRegionCode());
         }
         if (StringUtils.isNotBlank(query.getScheduleStatus())) {
             wrapper.eq(AdPlan::getScheduleStatus, query.getScheduleStatus());
@@ -109,7 +109,7 @@ public class AdPlanServiceImpl implements AdPlanService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public AdPlan create(AdPlanCreateRequest request) {
-        validatePlanRequest(request);
+        validatePlanRequest(request, true);
 
         Date now = new Date();
         AdPlan plan = new AdPlan();
@@ -132,10 +132,10 @@ public class AdPlanServiceImpl implements AdPlanService {
     @Transactional(rollbackFor = Exception.class)
     public AdPlan update(Long id, AdPlanUpdateRequest request) {
         AdPlan plan = getDetail(id);
-        if (!"draft".equals(plan.getScheduleStatus()) || "live".equals(plan.getDeliveryStatus())) {
-            throw new BusinessException("只有草稿且未投放的计划可以编辑");
+        if (!canEditPlan(plan)) {
+            throw new BusinessException("只有草稿或已排期且未投放的计划可以编辑");
         }
-        validatePlanRequest(request);
+        validatePlanRequest(request, false);
         copyRequest(request, plan);
         plan.setUpdateBy(dataScopeService.currentUserId());
         plan.setUpdateTime(new Date());
@@ -189,6 +189,7 @@ public class AdPlanServiceImpl implements AdPlanService {
         plan.setUpdateBy(dataScopeService.currentUserId());
         plan.setUpdateTime(new Date());
         adPlanMapper.updateById(plan);
+        adDeliveryService.stopPlan(plan.getId(), plan.getDeviceIds(), "pause");
         releaseCurrentPlanForDevices(plan);
         return getDetail(id);
     }
@@ -204,11 +205,12 @@ public class AdPlanServiceImpl implements AdPlanService {
         plan.setUpdateBy(dataScopeService.currentUserId());
         plan.setUpdateTime(new Date());
         adPlanMapper.updateById(plan);
+        adDeliveryService.stopPlan(plan.getId(), plan.getDeviceIds(), "finish");
         releaseCurrentPlanForDevices(plan);
         return getDetail(id);
     }
 
-    private void validatePlanRequest(AdPlanCreateRequest request) {
+    private void validatePlanRequest(AdPlanCreateRequest request, boolean requireStartNotPast) {
         AdOrder adOrder = adOrderMapper.selectById(request.getAdId());
         if (adOrder == null || Integer.valueOf(1).equals(adOrder.getDeleted())) {
             throw new BusinessException("关联广告不存在");
@@ -219,6 +221,9 @@ public class AdPlanServiceImpl implements AdPlanService {
         }
         Date start = parseDate(request.getStartTime(), "开始时间格式不正确");
         Date end = parseDate(request.getEndTime(), "结束时间格式不正确");
+        if (requireStartNotPast && start.before(new Date())) {
+            throw new BusinessException("开始时间不能早于当前时间");
+        }
         if (!end.after(start)) {
             throw new BusinessException("结束时间必须晚于开始时间");
         }
@@ -249,9 +254,9 @@ public class AdPlanServiceImpl implements AdPlanService {
     }
 
     private void copyRequest(AdPlanCreateRequest request, AdPlan plan) {
-        plan.setPlanName(request.getPlanName());
+        plan.setPlanName(StringUtils.trim(request.getPlanName()));
         plan.setAdId(request.getAdId());
-        plan.setRegionCode(request.getRegionCode());
+        plan.setRegionCode(StringUtils.trimToNull(request.getRegionCode()));
         plan.setStartTime(parseDate(request.getStartTime(), "开始时间格式不正确"));
         plan.setEndTime(parseDate(request.getEndTime(), "结束时间格式不正确"));
         plan.setOperatorId(request.getOperatorId());
@@ -259,10 +264,18 @@ public class AdPlanServiceImpl implements AdPlanService {
 
     private Date parseDate(String value, String message) {
         try {
-            return new SimpleDateFormat(DATE_PATTERN).parse(value);
+            SimpleDateFormat format = new SimpleDateFormat(DATE_PATTERN);
+            format.setLenient(false);
+            return format.parse(value);
         } catch (ParseException e) {
             throw new BusinessException(message);
         }
+    }
+
+    private boolean canEditPlan(AdPlan plan) {
+        return ("draft".equals(plan.getScheduleStatus()) || "scheduled".equals(plan.getScheduleStatus()))
+                && !"live".equals(plan.getDeliveryStatus())
+                && !"finished".equals(plan.getDeliveryStatus());
     }
 
     private void saveRelations(Long planId, List<Long> materialIds, List<Long> deviceIds) {
@@ -353,3 +366,4 @@ public class AdPlanServiceImpl implements AdPlanService {
         wrapper.in(AdPlan::getAdId, adIds);
     }
 }
+

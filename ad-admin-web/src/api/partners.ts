@@ -13,6 +13,7 @@ export interface Advertiser {
   ownerUserId?: number
   status: string
   sourceType?: string
+  agentId?: number
   remark?: string
   createTime?: string
   updateTime?: string
@@ -40,6 +41,7 @@ export interface AdvertiserPayload {
   contactEmail?: string
   ownerUserId?: number
   sourceType?: string
+  agentId?: number
   remark?: string
 }
 

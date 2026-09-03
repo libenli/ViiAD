@@ -238,6 +238,7 @@ body {
 .data-table {
   width: 100%;
   margin-top: 18px;
+  --el-table-fixed-right-column: -4px 0 8px -6px rgba(0, 0, 0, 0.45);
   --el-table-bg-color: transparent;
   --el-table-tr-bg-color: transparent;
   --el-table-header-bg-color: rgba(17, 34, 45, 0.96);
@@ -247,12 +248,18 @@ body {
   --el-table-header-text-color: #b8d1dc;
 }
 
+.data-table .el-table__inner-wrapper {
+  min-width: 0;
+}
+
 .data-table .operation-column .cell {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px 8px;
+  gap: 2px 7px;
   align-items: center;
   min-width: max-content;
+  padding-right: 10px;
+  padding-left: 10px;
 }
 
 .data-table .operation-column .el-button + .el-button {
@@ -434,6 +441,40 @@ body {
   background: rgba(15, 35, 47, 0.98) !important;
 }
 
+.el-table td.el-table__cell.el-table-fixed-column--right,
+.el-table th.el-table__cell.el-table-fixed-column--right,
+.el-table td.el-table__cell.operation-column,
+.el-table th.el-table__cell.operation-column {
+  background: rgba(12, 29, 39, 1) !important;
+  background-color: rgba(12, 29, 39, 1) !important;
+  z-index: 8 !important;
+}
+
+.el-table th.el-table__cell.el-table-fixed-column--right,
+.el-table th.el-table__cell.operation-column {
+  background: rgba(18, 41, 53, 1) !important;
+  background-color: rgba(18, 41, 53, 1) !important;
+  z-index: 9 !important;
+}
+
+.el-table td.el-table__cell.el-table-fixed-column--right.is-first-column::before,
+.el-table th.el-table__cell.el-table-fixed-column--right.is-first-column::before,
+.el-table td.el-table__cell.operation-column::before,
+.el-table th.el-table__cell.operation-column::before {
+  left: -4px !important;
+  width: 4px !important;
+  
+  box-shadow: -4px 0 8px -6px rgba(0, 0, 0, 0.48) !important;
+}
+
+.el-table tr:hover > td.el-table__cell.el-table-fixed-column--right,
+.el-table tr.hover-row > td.el-table__cell.el-table-fixed-column--right,
+.el-table tr:hover > td.el-table__cell.operation-column,
+.el-table tr.hover-row > td.el-table__cell.operation-column {
+  background: rgba(18, 48, 60, 1) !important;
+  background-color: rgba(18, 48, 60, 1) !important;
+}
+
 .el-table__fixed,
 .el-table__fixed-right,
 .el-table__fixed-header-wrapper,
@@ -567,6 +608,32 @@ body {
   border-color: var(--line) !important;
 }
 
+.el-picker-panel__footer .el-button,
+.el-picker-panel__footer .el-button.is-text,
+.el-picker-panel__footer .el-button--text,
+.el-picker-panel__footer .el-button:not(.el-button--primary) {
+  --el-button-text-color: #ffffff;
+  --el-button-hover-text-color: #ffffff;
+  --el-button-active-text-color: #ffffff;
+  --el-button-disabled-text-color: rgba(255, 255, 255, 0.55);
+  color: #ffffff !important;
+  background: rgba(20, 45, 58, 0.94) !important;
+  border-color: rgba(120, 188, 205, 0.28) !important;
+}
+
+.el-picker-panel__footer .el-button--primary {
+  --el-button-text-color: #ffffff;
+  --el-button-hover-text-color: #ffffff;
+  --el-button-active-text-color: #ffffff;
+  color: #ffffff !important;
+  background: #409eff !important;
+  border-color: #409eff !important;
+}
+
+.el-picker-panel__footer .el-button > span {
+  color: #ffffff !important;
+}
+
 .el-date-table td.available,
 .el-date-table td .el-date-table-cell,
 .el-picker-panel__icon-btn,
@@ -642,4 +709,19 @@ body {
 .el-pagination__total,
 .el-pagination__jump {
   color: #a9c3cf;
+}
+
+.el-upload-dragger {
+  color: #e9f8ff !important;
+  background: rgba(8, 24, 34, 0.96) !important;
+  border-color: rgba(83, 229, 255, 0.24) !important;
+}
+
+.el-upload-dragger:hover {
+  border-color: rgba(83, 229, 255, 0.58) !important;
+  background: rgba(12, 35, 47, 0.98) !important;
+}
+
+.el-upload-dragger * {
+  color: inherit;
 }

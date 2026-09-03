@@ -3,10 +3,12 @@ package com.mrd.ad.business.partner.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mrd.ad.business.partner.domain.AdAdvertiser;
+import com.mrd.ad.business.partner.domain.AdAgent;
 import com.mrd.ad.business.partner.dto.AdvertiserCreateRequest;
 import com.mrd.ad.business.partner.dto.AdvertiserQuery;
 import com.mrd.ad.business.partner.dto.AdvertiserUpdateRequest;
 import com.mrd.ad.business.partner.mapper.AdAdvertiserMapper;
+import com.mrd.ad.business.partner.mapper.AdAgentMapper;
 import com.mrd.ad.business.partner.service.AdAdvertiserService;
 import com.mrd.ad.common.core.PageResult;
 import com.mrd.ad.common.exception.BusinessException;
@@ -20,9 +22,11 @@ import java.util.Date;
 public class AdAdvertiserServiceImpl implements AdAdvertiserService {
 
     private final AdAdvertiserMapper adAdvertiserMapper;
+    private final AdAgentMapper adAgentMapper;
 
-    public AdAdvertiserServiceImpl(AdAdvertiserMapper adAdvertiserMapper) {
+    public AdAdvertiserServiceImpl(AdAdvertiserMapper adAdvertiserMapper, AdAgentMapper adAgentMapper) {
         this.adAdvertiserMapper = adAdvertiserMapper;
+        this.adAgentMapper = adAgentMapper;
     }
 
     @Override
@@ -113,6 +117,18 @@ public class AdAdvertiserServiceImpl implements AdAdvertiserService {
         advertiser.setContactPhone(request.getContactPhone());
         advertiser.setContactEmail(request.getContactEmail());
         advertiser.setOwnerUserId(request.getOwnerUserId());
+        if ("agent".equals(request.getSourceType())) {
+            if (request.getAgentId() == null) {
+                throw new BusinessException("代理商引入时请选择代理商");
+            }
+            AdAgent agent = adAgentMapper.selectById(request.getAgentId());
+            if (agent == null || Integer.valueOf(1).equals(agent.getDeleted()) || !"active".equals(agent.getStatus())) {
+                throw new BusinessException("代理商不存在或已停用");
+            }
+            advertiser.setAgentId(request.getAgentId());
+        } else {
+            advertiser.setAgentId(null);
+        }
         advertiser.setRemark(request.getRemark());
     }
 }

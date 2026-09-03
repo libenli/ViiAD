@@ -2,11 +2,13 @@ package com.mrd.ad.business.ad.dto;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Pattern;
 import java.math.BigDecimal;
 
 public class AdOrderCreateRequest {
 
     @NotBlank(message = "广告名称不能为空")
+    @Pattern(regexp = "^[\\u4e00-\\u9fa5A-Za-z0-9\\s\\-_（）()，。,.、：:；;！!？?]+$", message = "广告名称不能包含特殊字符")
     private String adName;
 
     @NotNull(message = "广告主不能为空")
@@ -18,8 +20,12 @@ public class AdOrderCreateRequest {
     private String adType;
 
     private String objective;
+
+    @NotBlank(message = "投放区域不能为空")
     private String regionCode;
     private BigDecimal budgetAmount;
+
+    @Pattern(regexp = "^$|^[\\u4e00-\\u9fa5A-Za-z0-9\\s\\-_（）()，。,.、：:；;！!？?]+$", message = "广告说明不能包含特殊字符")
     private String description;
 
     public String getAdName() {
@@ -86,4 +92,3 @@ public class AdOrderCreateRequest {
         this.description = description;
     }
 }
-

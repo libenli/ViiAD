@@ -156,6 +156,7 @@ CREATE TABLE IF NOT EXISTS ad_advertiser (
   owner_user_id BIGINT DEFAULT NULL COMMENT '绑定用户ID',
   status VARCHAR(30) DEFAULT 'active' COMMENT '状态',
   source_type VARCHAR(30) DEFAULT 'platform' COMMENT '来源',
+  agent_id BIGINT DEFAULT NULL COMMENT '来源代理商ID',
   remark VARCHAR(500) DEFAULT NULL COMMENT '备注',
   create_by BIGINT DEFAULT NULL COMMENT '创建人',
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -165,6 +166,7 @@ CREATE TABLE IF NOT EXISTS ad_advertiser (
   PRIMARY KEY (id),
   UNIQUE KEY uk_ad_advertiser_code (advertiser_code),
   KEY idx_ad_advertiser_owner (owner_user_id),
+  KEY idx_ad_advertiser_agent (agent_id),
   KEY idx_ad_advertiser_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='广告主表';
 
@@ -443,6 +445,8 @@ CREATE TABLE IF NOT EXISTS ad_bill (
   status VARCHAR(30) DEFAULT 'pending' COMMENT '状态',
   confirm_time DATETIME DEFAULT NULL COMMENT '确认时间',
   pay_time DATETIME DEFAULT NULL COMMENT '支付时间',
+  payment_voucher_no VARCHAR(100) DEFAULT NULL COMMENT '银行汇款单号',
+  payment_voucher_url VARCHAR(500) DEFAULT NULL COMMENT '付款截图地址',
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),

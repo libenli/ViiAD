@@ -7,6 +7,7 @@ import '@/styles/index.scss'
 import App from './App.vue'
 import router from './router'
 import { pinia } from './stores'
+import { useLocaleStore } from './stores/locale'
 
 const app = createApp(App)
 
@@ -15,7 +16,7 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
 }
 
 app.use(pinia)
+useLocaleStore().initLanguage()
 app.use(router)
 app.use(ElementPlus)
 app.mount('#app')
-

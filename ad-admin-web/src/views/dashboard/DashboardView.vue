@@ -1,18 +1,18 @@
 <template>
-  <AppPage eyebrow="运营概览" title="工作台" :stats="stats">
+  <AppPage :eyebrow="t.overview" :title="t.title" :stats="stats">
     <template #actions>
-      <el-button :loading="loading" :icon="Refresh" @click="loadDashboard">刷新数据</el-button>
+      <el-button :loading="loading" :icon="Refresh" @click="loadDashboard">{{ t.refresh }}</el-button>
     </template>
 
     <section class="hero-panel">
       <div>
         <p class="eyebrow">MRD AD COMMAND CENTER</p>
-        <h3>ViiAD 运行驾驶舱</h3>
-        <span>聚合广告、素材、计划、设备、下发、报表和工单关键状态，快速判断今天是否跑得顺。</span>
+        <h3>{{ t.heroTitle }}</h3>
+        <span>{{ t.heroDesc }}</span>
       </div>
       <div class="hero-metrics">
         <strong>{{ overview.completionRate }}</strong>
-        <small>投放完成率</small>
+        <small>{{ t.completionRate }}</small>
       </div>
     </section>
 
@@ -20,10 +20,10 @@
       <section class="chart-card wide">
         <div class="card-head">
           <div>
-            <p class="eyebrow">近 7 日</p>
-            <h3>播放趋势</h3>
+            <p class="eyebrow">{{ t.last7Days }}</p>
+            <h3>{{ t.playTrend }}</h3>
           </div>
-          <el-tag type="success" effect="dark">播放 {{ formatNumber(overview.playCount) }}</el-tag>
+          <el-tag type="success" effect="dark">{{ t.play }} {{ formatNumber(overview.playCount) }}</el-tag>
         </div>
         <div ref="trendChartRef" class="chart"></div>
       </section>
@@ -31,8 +31,8 @@
       <section class="chart-card">
         <div class="card-head">
           <div>
-            <p class="eyebrow">广告状态</p>
-            <h3>广告分布</h3>
+            <p class="eyebrow">{{ t.adStatus }}</p>
+            <h3>{{ t.adDistribution }}</h3>
           </div>
         </div>
         <div ref="adChartRef" class="chart small"></div>
@@ -41,8 +41,8 @@
       <section class="chart-card">
         <div class="card-head">
           <div>
-            <p class="eyebrow">设备状态</p>
-            <h3>在线与故障</h3>
+            <p class="eyebrow">{{ t.deviceStatus }}</p>
+            <h3>{{ t.deviceHealth }}</h3>
           </div>
         </div>
         <div ref="deviceChartRef" class="chart small"></div>
@@ -51,8 +51,8 @@
       <section class="chart-card">
         <div class="card-head">
           <div>
-            <p class="eyebrow">投放计划</p>
-            <h3>计划状态</h3>
+            <p class="eyebrow">{{ t.deliveryPlan }}</p>
+            <h3>{{ t.planStatus }}</h3>
           </div>
         </div>
         <div class="status-list">
@@ -67,8 +67,8 @@
       <section class="chart-card">
         <div class="card-head">
           <div>
-            <p class="eyebrow">待办提醒</p>
-            <h3>需要关注</h3>
+            <p class="eyebrow">{{ t.todoReminder }}</p>
+            <h3>{{ t.needsAttention }}</h3>
           </div>
         </div>
         <div class="todo-list">
@@ -85,16 +85,17 @@
 
 <script setup lang="ts">
 import * as echarts from 'echarts'
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
 import AppPage from '@/components/AppPage.vue'
-import { fetchAds, adStatusMap, type AdOrder } from '@/api/ads'
+import { fetchAds, type AdOrder } from '@/api/ads'
 import { fetchMaterials, type AdMaterial } from '@/api/materials'
 import { fetchPlans, type AdPlan } from '@/api/plans'
 import { fetchDevices, type AdDevice } from '@/api/devices'
 import { fetchDeliveries, type AdDeliveryRecord } from '@/api/deliveries'
 import { fetchReportOverview, fetchPlayLogs, type PlayLog, type ReportOverview } from '@/api/reports'
 import { fetchWorkOrders, type WorkOrder } from '@/api/workorders'
+import { useLocaleStore } from '@/stores/locale'
 import { useUserStore } from '@/stores/user'
 import type { ApiResponse } from '@/utils/request'
 import type { PageResult } from '@/api/ads'
@@ -102,6 +103,7 @@ import type { PageResult } from '@/api/ads'
 type ChartInstance = echarts.ECharts | null
 
 const user = useUserStore()
+const locale = useLocaleStore()
 const loading = ref(false)
 const trendChartRef = ref<HTMLDivElement>()
 const adChartRef = ref<HTMLDivElement>()
@@ -126,6 +128,7 @@ const devices = ref<AdDevice[]>([])
 const deliveries = ref<AdDeliveryRecord[]>([])
 const playLogs = ref<PlayLog[]>([])
 const workOrders = ref<WorkOrder[]>([])
+const t = computed(() => locale.messages.page.dashboard)
 
 const dateRange = computed(() => {
   const end = new Date()
@@ -135,46 +138,46 @@ const dateRange = computed(() => {
 })
 
 const stats = computed(() => [
-  { label: '曝光量', value: formatNumber(overview.exposureCount) },
-  { label: '播放次数', value: formatNumber(overview.playCount) },
-  { label: '在线设备', value: devices.value.filter((item) => item.onlineStatus === 'online').length },
-  { label: '待办异常', value: todoItems.value.reduce((sum, item) => sum + item.value, 0) }
+  { label: t.value.exposure, value: formatNumber(overview.exposureCount) },
+  { label: t.value.playCount, value: formatNumber(overview.playCount) },
+  { label: t.value.onlineDevices, value: devices.value.filter((item) => item.onlineStatus === 'online').length },
+  { label: t.value.todoExceptions, value: todoItems.value.reduce((sum, item) => sum + item.value, 0) }
 ])
 
 const planStatusItems = computed(() => {
   const total = Math.max(plans.value.length, 1)
   const items = [
-    { label: '草稿计划', value: plans.value.filter((item) => item.scheduleStatus === 'draft').length },
-    { label: '已排期', value: plans.value.filter((item) => item.scheduleStatus === 'scheduled').length },
-    { label: '投放中', value: plans.value.filter((item) => item.deliveryStatus === 'live').length },
-    { label: '已暂停', value: plans.value.filter((item) => item.deliveryStatus === 'paused').length }
+    { label: t.value.draftPlans, value: plans.value.filter((item) => item.scheduleStatus === 'draft').length },
+    { label: t.value.scheduledPlans, value: plans.value.filter((item) => item.scheduleStatus === 'scheduled').length },
+    { label: t.value.livePlans, value: plans.value.filter((item) => item.deliveryStatus === 'live').length },
+    { label: t.value.pausedPlans, value: plans.value.filter((item) => item.deliveryStatus === 'paused').length }
   ]
   return items.map((item) => ({ ...item, percent: Math.max(6, Math.round((item.value / total) * 100)) }))
 })
 
 const todoItems = computed(() => [
   {
-    label: '待审广告',
+    label: t.value.pendingAds,
     value: ads.value.filter((item) => item.status === 'submitted').length,
-    hint: '影响素材与计划创建',
+    hint: t.value.pendingAdsHint,
     level: 'warning'
   },
   {
-    label: '待审素材',
+    label: t.value.pendingMaterials,
     value: materials.value.filter((item) => item.status === 'pending_review').length,
-    hint: '影响计划可选素材',
+    hint: t.value.pendingMaterialsHint,
     level: 'warning'
   },
   {
-    label: '下发失败',
+    label: t.value.failedDeliveries,
     value: deliveries.value.filter((item) => item.deliveryStatus === 'failed').length,
-    hint: '建议转工单处理',
+    hint: t.value.failedDeliveriesHint,
     level: 'danger'
   },
   {
-    label: '未关闭工单',
+    label: t.value.openWorkOrders,
     value: workOrders.value.filter((item) => item.status !== 'closed').length,
-    hint: '设备或下发异常待跟进',
+    hint: t.value.openWorkOrdersHint,
     level: 'primary'
   }
 ])
@@ -189,7 +192,7 @@ function formatDate(date: Date) {
 function formatNumber(value?: number) {
   const current = value || 0
   if (current >= 10000) {
-    return `${(current / 10000).toFixed(1)}万`
+    return locale.language === 'en-US' ? `${(current / 1000).toFixed(1)}K` : `${(current / 10000).toFixed(1)}万`
   }
   return current.toLocaleString()
 }
@@ -284,7 +287,7 @@ function renderTrendChart() {
     },
     series: [
       {
-        name: '播放次数',
+        name: t.value.playCount,
         type: 'line',
         smooth: true,
         symbolSize: 8,
@@ -317,7 +320,7 @@ function renderAdChart() {
         center: ['50%', '44%'],
         label: { color: '#dff7ff' },
         data: statusValues.map((status) => ({
-          name: adStatusMap[status]?.label || status,
+          name: locale.messages.status.ad[status as keyof typeof locale.messages.status.ad] || status,
           value: ads.value.filter((item) => item.status === status).length
         }))
       }
@@ -336,7 +339,7 @@ function renderDeviceChart() {
     tooltip: { trigger: 'axis' },
     xAxis: {
       type: 'category',
-      data: ['在线', '离线', '故障'],
+      data: [t.value.online, t.value.offline, t.value.fault],
       axisLine: { lineStyle: { color: 'rgba(141, 212, 255, 0.25)' } },
       axisLabel: { color: '#9fc8dc' }
     },
@@ -370,6 +373,13 @@ onMounted(() => {
   loadDashboard()
   window.addEventListener('resize', resizeCharts)
 })
+
+watch(
+  () => locale.language,
+  () => {
+    nextTick(renderCharts)
+  }
+)
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', resizeCharts)

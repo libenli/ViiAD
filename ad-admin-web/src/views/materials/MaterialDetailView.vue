@@ -1,26 +1,26 @@
 <template>
-  <AppPage eyebrow="广告业务" title="素材详情" :stats="stats">
+  <AppPage :eyebrow="locale.t('page.business')" :title="locale.t('page.materials.detailTitle')" :stats="stats">
     <template #actions>
-      <el-button @click="router.push('/materials')">返回列表</el-button>
+      <el-button @click="router.push('/materials')">{{ locale.t('common.backToList') }}</el-button>
       <el-button
         v-if="material && user.hasPermission('material:edit') && (material.status === 'draft' || material.status === 'rejected')"
         type="primary"
         @click="router.push(`/materials/${material.id}/edit`)"
       >
-        编辑
+        {{ locale.t('common.edit') }}
       </el-button>
       <el-button
         v-if="material && user.hasPermission('material:submit') && (material.status === 'draft' || material.status === 'rejected')"
         type="warning"
         @click="handleSubmit"
       >
-        提交审核
+        {{ locale.t('page.ads.submitReview') }}
       </el-button>
       <el-button v-if="user.hasPermission('material:audit') && material?.status === 'pending_review'" type="success" @click="handleApprove">
-        审核通过
+        {{ locale.t('page.ads.approve') }}
       </el-button>
       <el-button v-if="user.hasPermission('material:audit') && material?.status === 'pending_review'" type="danger" @click="handleReject">
-        驳回
+        {{ locale.t('page.ads.reject') }}
       </el-button>
     </template>
 
@@ -28,29 +28,29 @@
     <template v-else-if="material">
       <div class="detail-grid">
         <el-descriptions :column="2" border>
-          <el-descriptions-item label="素材编号">{{ material.materialCode }}</el-descriptions-item>
-          <el-descriptions-item label="素材名称">{{ material.materialName }}</el-descriptions-item>
-          <el-descriptions-item label="所属广告ID">{{ material.adId }}</el-descriptions-item>
-          <el-descriptions-item label="素材类型">{{ getMaterialTypeLabel(material.materialType) }}</el-descriptions-item>
-          <el-descriptions-item label="状态">
+          <el-descriptions-item :label="locale.t('page.materials.code')">{{ material.materialCode }}</el-descriptions-item>
+          <el-descriptions-item :label="locale.t('page.materials.name')">{{ material.materialName }}</el-descriptions-item>
+          <el-descriptions-item :label="locale.t('page.materials.adOwnerId')">{{ material.adId }}</el-descriptions-item>
+          <el-descriptions-item :label="locale.t('page.materials.type')">{{ getMaterialTypeLabel(material.materialType) }}</el-descriptions-item>
+          <el-descriptions-item :label="locale.t('page.materials.status')">
             <el-tag :type="materialStatusMap[material.status]?.type || 'info'" effect="dark">
-              {{ materialStatusMap[material.status]?.label || material.status }}
+              {{ getStatusLabel(material.status) }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="上传人">{{ material.uploaderId || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="尺寸">
+          <el-descriptions-item :label="locale.t('page.materials.uploader')">{{ material.uploaderId || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="locale.t('page.materials.size')">
             {{ material.width && material.height ? `${material.width}x${material.height}` : '-' }}
           </el-descriptions-item>
-          <el-descriptions-item label="视频时长">{{ material.durationSeconds ? `${material.durationSeconds}s` : '-' }}</el-descriptions-item>
-          <el-descriptions-item label="文件地址" :span="2">
+          <el-descriptions-item :label="locale.t('page.materials.videoDuration')">{{ material.durationSeconds ? `${material.durationSeconds}s` : '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="locale.t('page.materials.fileUrl')" :span="2">
             <a :href="material.fileUrl" target="_blank" rel="noreferrer">{{ material.fileUrl }}</a>
           </el-descriptions-item>
-          <el-descriptions-item label="封面地址" :span="2">{{ material.coverUrl || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="审核意见" :span="2">{{ material.reviewComment || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="locale.t('page.materials.coverUrl')" :span="2">{{ material.coverUrl || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="locale.t('page.materials.reviewComment')" :span="2">{{ material.reviewComment || '-' }}</el-descriptions-item>
         </el-descriptions>
 
         <div class="preview-panel">
-          <img v-if="material.materialType === 'image'" :src="material.fileUrl" alt="素材预览" />
+          <img v-if="material.materialType === 'image'" :src="material.fileUrl" :alt="locale.t('page.materials.preview')" />
           <video v-else-if="material.materialType === 'video'" :src="material.fileUrl" controls />
           <div v-else class="h5-preview">H5</div>
         </div>
@@ -74,23 +74,29 @@ import {
   submitMaterial,
   type AdMaterial
 } from '@/api/materials'
+import { useLocaleStore } from '@/stores/locale'
 
 const route = useRoute()
 const router = useRouter()
+const locale = useLocaleStore()
 const user = useUserStore()
 const loading = ref(false)
 const material = ref<AdMaterial>()
 const id = computed(() => Number(route.params.id))
 
 const stats = computed(() => [
-  { label: '当前状态', value: material.value ? materialStatusMap[material.value.status]?.label || material.value.status : '-' },
-  { label: '素材类型', value: material.value ? getMaterialTypeLabel(material.value.materialType) : '-' },
-  { label: '所属广告', value: material.value?.adId || '-' },
-  { label: '审核人', value: material.value?.reviewUserId || '-' }
+  { label: locale.t('page.materials.currentStatus'), value: material.value ? getStatusLabel(material.value.status) : '-' },
+  { label: locale.t('page.materials.type'), value: material.value ? getMaterialTypeLabel(material.value.materialType) : '-' },
+  { label: locale.t('page.materials.materialOwner'), value: material.value?.adId || '-' },
+  { label: locale.t('page.materials.reviewUser'), value: material.value?.reviewUserId || '-' }
 ])
 
 function getMaterialTypeLabel(value: string) {
-  return materialTypeOptions.find((item) => item.value === value)?.label || value
+  return locale.t(`status.materialType.${value}`, materialTypeOptions.find((item) => item.value === value)?.label || value)
+}
+
+function getStatusLabel(value: string) {
+  return locale.t(`status.material.${value}`, materialStatusMap[value]?.label || value)
 }
 
 async function loadDetail() {
@@ -105,25 +111,25 @@ async function loadDetail() {
 
 async function handleSubmit() {
   await submitMaterial(id.value)
-  ElMessage.success('已提交审核')
+  ElMessage.success(locale.t('page.materials.submitted'))
   loadDetail()
 }
 
 async function handleApprove() {
   await approveMaterial(id.value)
-  ElMessage.success('审核已通过')
+  ElMessage.success(locale.t('page.materials.approved'))
   loadDetail()
 }
 
 async function handleReject() {
-  const result = await ElMessageBox.prompt('请输入驳回原因', '驳回素材', {
-    confirmButtonText: '确认驳回',
-    cancelButtonText: '取消',
+  const result = await ElMessageBox.prompt(locale.t('page.materials.rejectPrompt'), locale.t('page.materials.rejectTitle'), {
+    confirmButtonText: locale.t('page.materials.rejectConfirm'),
+    cancelButtonText: locale.t('common.cancel'),
     inputPattern: /\S+/,
-    inputErrorMessage: '驳回原因不能为空'
+    inputErrorMessage: locale.t('page.materials.rejectRequired')
   })
   await rejectMaterial(id.value, result.value)
-  ElMessage.success('素材已驳回')
+  ElMessage.success(locale.t('page.materials.rejected'))
   loadDetail()
 }
 

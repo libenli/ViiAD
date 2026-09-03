@@ -19,5 +19,5 @@ public interface AdBillService {
 
     AdBill confirm(Long id);
 
-    AdBill pay(Long id);
+    AdBill pay(Long id, String paymentVoucherNo, String paymentVoucherUrl);
 }

@@ -1,6 +1,8 @@
 package com.mrd.ad.business.system.dto;
 
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Email;
+import javax.validation.constraints.Pattern;
 import java.util.List;
 
 public class SysUserSaveRequest {
@@ -13,7 +15,10 @@ public class SysUserSaveRequest {
     @NotBlank(message = "姓名不能为空")
     private String realName;
 
+    @Pattern(regexp = "^$|^\\+?[0-9][0-9\\s-]{5,19}$", message = "手机号格式不正确")
     private String phone;
+
+    @Email(message = "邮箱格式不正确")
     private String email;
     private String userType;
     private Long advertiserId;

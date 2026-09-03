@@ -1,64 +1,64 @@
 <template>
-  <AppPage eyebrow="审计管理" title="操作日志" :stats="stats">
+  <AppPage :eyebrow="locale.t('page.logs.audit')" :title="locale.t('page.logs.title')" :stats="stats">
     <el-form class="filter-form" :model="query" inline>
-      <el-form-item label="业务模块">
-        <el-input v-model="query.moduleName" clearable placeholder="如 广告管理 / 素材管理" />
+      <el-form-item :label="locale.t('page.logs.moduleName')">
+        <el-input v-model="query.moduleName" clearable :placeholder="locale.t('page.logs.modulePlaceholder')" />
       </el-form-item>
-      <el-form-item label="动作">
-        <el-select v-model="query.businessType" clearable placeholder="全部动作" style="width: 150px">
+      <el-form-item :label="locale.t('page.logs.action')">
+        <el-select v-model="query.businessType" clearable :placeholder="locale.t('page.logs.allActions')" style="width: 150px">
           <el-option v-for="item in businessTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
       </el-form-item>
-      <el-form-item label="操作人">
-        <el-input v-model="query.operatorName" clearable placeholder="账号" style="width: 140px" />
+      <el-form-item :label="locale.t('page.logs.operator')">
+        <el-input v-model="query.operatorName" clearable :placeholder="locale.t('page.logs.operatorPlaceholder')" style="width: 140px" />
       </el-form-item>
-      <el-form-item label="结果">
-        <el-select v-model="query.status" clearable placeholder="全部" style="width: 120px">
-          <el-option label="成功" :value="1" />
-          <el-option label="失败" :value="0" />
+      <el-form-item :label="locale.t('page.logs.result')">
+        <el-select v-model="query.status" clearable :placeholder="locale.t('page.logs.allResults')" style="width: 120px">
+          <el-option :label="locale.t('status.operLog.success')" :value="1" />
+          <el-option :label="locale.t('status.operLog.failed')" :value="0" />
         </el-select>
       </el-form-item>
-      <el-form-item label="时间">
+      <el-form-item :label="locale.t('page.logs.time')">
         <el-date-picker
           v-model="timeRange"
           type="datetimerange"
           value-format="YYYY-MM-DD HH:mm:ss"
-          start-placeholder="开始时间"
-          end-placeholder="结束时间"
-          range-separator="至"
+          :start-placeholder="locale.t('page.logs.startTime')"
+          :end-placeholder="locale.t('page.logs.endTime')"
+          :range-separator="locale.t('page.logs.rangeSeparator')"
         />
       </el-form-item>
       <el-form-item>
-        <el-button type="primary" :icon="Search" @click="loadLogs">查询</el-button>
-        <el-button :icon="Refresh" @click="resetQuery">重置</el-button>
+        <el-button type="primary" :icon="Search" @click="loadLogs">{{ locale.t('common.search') }}</el-button>
+        <el-button :icon="Refresh" @click="resetQuery">{{ locale.t('common.reset') }}</el-button>
       </el-form-item>
     </el-form>
 
     <el-table v-loading="loading" :data="logs" class="data-table" row-key="id" @row-click="openDetail">
-      <el-table-column prop="moduleName" label="模块" min-width="130" />
-      <el-table-column label="动作" width="120">
+      <el-table-column prop="moduleName" :label="locale.t('page.logs.module')" min-width="130" />
+      <el-table-column :label="locale.t('page.logs.action')" width="120">
         <template #default="{ row }">{{ businessTypeLabel(row.businessType) }}</template>
       </el-table-column>
-      <el-table-column label="结果" width="100">
+      <el-table-column :label="locale.t('page.logs.result')" width="100">
         <template #default="{ row }">
           <el-tag :type="operLogStatusMap[row.status]?.type || 'info'" effect="dark">
-            {{ operLogStatusMap[row.status]?.label || row.status }}
+            {{ row.status === 1 ? locale.t('status.operLog.success') : locale.t('status.operLog.failed') }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="operatorName" label="操作人" min-width="120">
+      <el-table-column prop="operatorName" :label="locale.t('page.logs.operator')" min-width="120">
         <template #default="{ row }">{{ row.operatorName || '-' }}</template>
       </el-table-column>
-      <el-table-column prop="operatorIp" label="IP 地址" min-width="130" />
-      <el-table-column prop="requestMethod" label="方法" width="90" />
-      <el-table-column prop="requestUri" label="请求地址" min-width="220" show-overflow-tooltip />
-      <el-table-column prop="costTime" label="耗时(ms)" width="110" />
-      <el-table-column prop="createTime" label="操作时间" min-width="170" />
-      <el-table-column prop="errorMsg" label="异常信息" min-width="180" show-overflow-tooltip>
+      <el-table-column prop="operatorIp" :label="locale.t('page.logs.ipAddress')" min-width="130" />
+      <el-table-column prop="requestMethod" :label="locale.t('page.logs.method')" width="90" />
+      <el-table-column prop="requestUri" :label="locale.t('page.logs.requestUri')" min-width="220" show-overflow-tooltip />
+      <el-table-column prop="costTime" :label="locale.t('page.logs.costTime')" width="110" />
+      <el-table-column prop="createTime" :label="locale.t('page.logs.operationTime')" min-width="170" />
+      <el-table-column prop="errorMsg" :label="locale.t('page.logs.errorMsg')" min-width="180" show-overflow-tooltip>
         <template #default="{ row }">{{ row.errorMsg || '-' }}</template>
       </el-table-column>
       <template #empty>
-        <el-empty description="暂无操作日志，执行一次业务查询或保存后会自动生成" />
+        <el-empty :description="locale.t('page.logs.empty')" />
       </template>
     </el-table>
 
@@ -74,32 +74,32 @@
       />
     </div>
 
-    <el-drawer v-model="drawerVisible" title="日志详情" size="620px">
+    <el-drawer v-model="drawerVisible" :title="locale.t('page.logs.drawerTitle')" size="620px">
       <el-descriptions v-if="current" :column="1" border>
-        <el-descriptions-item label="模块">{{ current.moduleName || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="动作">{{ businessTypeLabel(current.businessType) }}</el-descriptions-item>
-        <el-descriptions-item label="结果">
+        <el-descriptions-item :label="locale.t('page.logs.module')">{{ current.moduleName || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.logs.action')">{{ businessTypeLabel(current.businessType) }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.logs.result')">
           <el-tag :type="operLogStatusMap[current.status]?.type || 'info'" effect="dark">
-            {{ operLogStatusMap[current.status]?.label || current.status }}
+            {{ current.status === 1 ? locale.t('status.operLog.success') : locale.t('status.operLog.failed') }}
           </el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="操作人">{{ current.operatorName || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="IP">{{ current.operatorIp || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="请求">{{ current.requestMethod }} {{ current.requestUri }}</el-descriptions-item>
-        <el-descriptions-item label="耗时">{{ current.costTime || 0 }} ms</el-descriptions-item>
-        <el-descriptions-item label="时间">{{ current.createTime || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.logs.operator')">{{ current.operatorName || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.logs.ip')">{{ current.operatorIp || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.logs.request')">{{ current.requestMethod }} {{ current.requestUri }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.logs.cost')">{{ current.costTime || 0 }} ms</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.logs.time')">{{ current.createTime || '-' }}</el-descriptions-item>
       </el-descriptions>
 
       <section class="log-json-block">
-        <h3>请求参数</h3>
+        <h3>{{ locale.t('page.logs.requestParam') }}</h3>
         <pre>{{ prettyText(current?.requestParam) }}</pre>
       </section>
       <section class="log-json-block">
-        <h3>响应结果</h3>
+        <h3>{{ locale.t('page.logs.responseResult') }}</h3>
         <pre>{{ prettyText(current?.responseResult) }}</pre>
       </section>
       <section v-if="current?.errorMsg" class="log-json-block danger">
-        <h3>异常信息</h3>
+        <h3>{{ locale.t('page.logs.errorMsg') }}</h3>
         <pre>{{ current.errorMsg }}</pre>
       </section>
     </el-drawer>
@@ -112,8 +112,10 @@ import { Refresh, Search } from '@element-plus/icons-vue'
 import AppPage from '@/components/AppPage.vue'
 import { fetchOperLogs, type SysOperLog } from '@/api/system'
 import { operLogStatusMap } from '@/config/status'
+import { useLocaleStore } from '@/stores/locale'
 
 const loading = ref(false)
+const locale = useLocaleStore()
 const logs = ref<SysOperLog[]>([])
 const total = ref(0)
 const drawerVisible = ref(false)
@@ -131,33 +133,14 @@ const query = reactive({
   size: 10
 })
 
-const businessTypeOptions = [
-  { label: '查询', value: 'QUERY' },
-  { label: '新增', value: 'CREATE' },
-  { label: '修改', value: 'UPDATE' },
-  { label: '提交', value: 'SUBMIT' },
-  { label: '审核通过', value: 'APPROVE' },
-  { label: '驳回', value: 'REJECT' },
-  { label: '排期', value: 'SCHEDULE' },
-  { label: '开始投放', value: 'START' },
-  { label: '暂停', value: 'PAUSE' },
-  { label: '结束', value: 'FINISH' },
-  { label: '上传', value: 'UPLOAD' },
-  { label: '生成', value: 'GENERATE' },
-  { label: '确认', value: 'CONFIRM' },
-  { label: '支付', value: 'PAY' }
-]
-
-const businessTypeMap = businessTypeOptions.reduce<Record<string, string>>((map, item) => {
-  map[item.value] = item.label
-  return map
-}, {})
+const businessTypeValues = ['QUERY', 'CREATE', 'UPDATE', 'SUBMIT', 'APPROVE', 'REJECT', 'SCHEDULE', 'START', 'PAUSE', 'FINISH', 'UPLOAD', 'GENERATE', 'CONFIRM', 'PAY']
+const businessTypeOptions = computed(() => businessTypeValues.map((value) => ({ label: businessTypeLabel(value), value })))
 
 const stats = computed(() => [
-  { label: '日志总数', value: total.value },
-  { label: '本页成功', value: logs.value.filter((item) => item.status === 1).length },
-  { label: '本页失败', value: logs.value.filter((item) => item.status === 0).length },
-  { label: '平均耗时', value: `${averageCost.value} ms` }
+  { label: locale.t('page.logs.total'), value: total.value },
+  { label: locale.t('page.logs.pageSuccess'), value: logs.value.filter((item) => item.status === 1).length },
+  { label: locale.t('page.logs.pageFailed'), value: logs.value.filter((item) => item.status === 0).length },
+  { label: locale.t('page.logs.averageCost'), value: `${averageCost.value} ms` }
 ])
 
 const averageCost = computed(() => {
@@ -205,7 +188,7 @@ function openDetail(row: SysOperLog) {
 }
 
 function businessTypeLabel(value?: string) {
-  return value ? businessTypeMap[value] || value : '-'
+  return value ? locale.t(`status.businessType.${value}`, value) : '-'
 }
 
 function prettyText(value?: string) {

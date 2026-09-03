@@ -194,7 +194,13 @@ public class AdBillServiceImpl implements AdBillService {
     }
 
     @Override
-    public AdBill pay(Long id) {
+    public AdBill pay(Long id, String paymentVoucherNo, String paymentVoucherUrl) {
+        if (StringUtils.isBlank(paymentVoucherNo)) {
+            throw new BusinessException("银行汇款单号不能为空");
+        }
+        if (StringUtils.isBlank(paymentVoucherUrl)) {
+            throw new BusinessException("付款截图不能为空");
+        }
         AdBill bill = getDetail(id);
         if ("paid".equals(bill.getStatus())) {
             throw new BusinessException("账单已支付");
@@ -205,6 +211,8 @@ public class AdBillServiceImpl implements AdBillService {
         bill.setStatus("paid");
         bill.setAmountPaid(bill.getAmountTotal());
         bill.setPayTime(new java.util.Date());
+        bill.setPaymentVoucherNo(StringUtils.trim(paymentVoucherNo));
+        bill.setPaymentVoucherUrl(StringUtils.trim(paymentVoucherUrl));
         bill.setUpdateTime(new java.util.Date());
         adBillMapper.updateById(bill);
         return bill;

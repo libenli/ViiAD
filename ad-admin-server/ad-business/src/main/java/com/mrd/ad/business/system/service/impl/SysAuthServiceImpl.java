@@ -9,6 +9,7 @@ import com.mrd.ad.business.system.domain.SysUser;
 import com.mrd.ad.business.system.domain.SysUserRole;
 import com.mrd.ad.business.system.domain.SysLoginLog;
 import com.mrd.ad.business.system.domain.SysOperLog;
+import com.mrd.ad.business.system.dto.AuthRoleOption;
 import com.mrd.ad.business.system.dto.SysLoginLogQuery;
 import com.mrd.ad.business.system.dto.SysOperLogQuery;
 import com.mrd.ad.business.system.dto.SysUserQuery;
@@ -24,6 +25,7 @@ import com.mrd.ad.business.system.service.SysAuthService;
 import com.mrd.ad.business.system.service.SysLoginSecurityService;
 import com.mrd.ad.business.system.service.SysPasswordService;
 import com.mrd.ad.business.system.service.SysTokenService;
+import com.mrd.ad.business.system.service.SysVerificationCodeService;
 import com.mrd.ad.common.core.PageResult;
 import com.mrd.ad.common.exception.BusinessException;
 import org.apache.commons.lang3.StringUtils;
@@ -56,6 +58,7 @@ public class SysAuthServiceImpl implements SysAuthService {
     private final SysPasswordService passwordService;
     private final SysTokenService tokenService;
     private final SysLoginSecurityService loginSecurityService;
+    private final SysVerificationCodeService verificationCodeService;
 
     public SysAuthServiceImpl(SysUserMapper sysUserMapper,
                               SysRoleMapper sysRoleMapper,
@@ -66,7 +69,8 @@ public class SysAuthServiceImpl implements SysAuthService {
                               SysOperLogMapper sysOperLogMapper,
                               SysPasswordService passwordService,
                               SysTokenService tokenService,
-                              SysLoginSecurityService loginSecurityService) {
+                              SysLoginSecurityService loginSecurityService,
+                              SysVerificationCodeService verificationCodeService) {
         this.sysUserMapper = sysUserMapper;
         this.sysRoleMapper = sysRoleMapper;
         this.sysUserRoleMapper = sysUserRoleMapper;
@@ -77,6 +81,7 @@ public class SysAuthServiceImpl implements SysAuthService {
         this.passwordService = passwordService;
         this.tokenService = tokenService;
         this.loginSecurityService = loginSecurityService;
+        this.verificationCodeService = verificationCodeService;
     }
 
     @Override
@@ -103,18 +108,81 @@ public class SysAuthServiceImpl implements SysAuthService {
         }
         loginSecurityService.recordSuccess(username);
         saveLoginLog(username, user.getId(), "success", null);
+        return buildLoginResult(user);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Map<String, Object> loginByVerificationCode(String type, String countryCode, String target, String code) {
+        String normalizedType = verificationCodeService.normalizeType(type);
+        String loginName = StringUtils.trimToEmpty(target);
+        loginSecurityService.checkAllowed(loginName);
+        SysUser user = "email".equals(normalizedType)
+                ? sysUserMapper.findActiveByEmailOrUsername(loginName)
+                : sysUserMapper.findActiveByPhone(StringUtils.defaultIfBlank(StringUtils.trim(countryCode), "+86"), loginName);
+        if (user == null) {
+            loginSecurityService.recordFailure(loginName);
+            saveLoginLog(loginName, null, "fail", "No active account is bound to this phone or email");
+            throw new BusinessException("No active account is bound to this phone or email");
+        }
+        try {
+            verificationCodeService.validateLoginCode(normalizedType, countryCode, target, code);
+        } catch (BusinessException ex) {
+            loginSecurityService.recordFailure(loginName);
+            saveLoginLog(loginName, user.getId(), "fail", ex.getMessage());
+            throw ex;
+        }
+        loginSecurityService.recordSuccess(loginName);
+        saveLoginLog(loginName, user.getId(), "success", null);
+        return buildLoginResult(user);
+    }
+
+    private Map<String, Object> buildLoginResult(SysUser user) {
+        List<SysRole> roles = getRoles(user.getId());
+        if (roles.size() > 1) {
+            Map<String, Object> data = new HashMap<String, Object>();
+            data.put("needRoleSelect", true);
+            data.put("tempToken", tokenService.createTempToken(user.getId()));
+            data.put("userId", user.getId());
+            data.put("username", user.getUsername());
+            data.put("realName", user.getRealName());
+            data.put("roles", toRoleOptions(roles));
+            return data;
+        }
+        Long roleId = roles.isEmpty() ? null : roles.get(0).getId();
+        return buildFinalLoginResult(user, roleId);
+    }
+
+    @Override
+    public Map<String, Object> selectRole(String tempToken, Long roleId) {
+        Long userId = tokenService.parseTempUserId(tempToken);
+        SysUser user = ensureUserExists(userId);
+        SysRole role = ensureUserRole(userId, roleId);
+        return buildFinalLoginResult(user, role.getId());
+    }
+
+    private Map<String, Object> buildFinalLoginResult(SysUser user, Long roleId) {
         Map<String, Object> data = new HashMap<String, Object>();
-        data.put("token", tokenService.createToken(user.getId()));
+        data.put("needRoleSelect", false);
+        data.put("token", tokenService.createToken(user.getId(), roleId));
         data.put("userId", user.getId());
         data.put("username", user.getUsername());
         data.put("realName", user.getRealName());
+        if (roleId != null) {
+            SysRole role = sysRoleMapper.selectById(roleId);
+            if (role != null) {
+                data.put("activeRoleId", role.getId());
+                data.put("activeRoleCode", role.getRoleCode());
+                data.put("activeRoleName", role.getRoleName());
+            }
+        }
         return data;
     }
 
     @Override
     public Map<String, Object> info(String token) {
         SysUser user = getUserByToken(token);
-        List<SysRole> roles = getRoles(user.getId());
+        List<SysRole> roles = getEffectiveRoles(token, user.getId());
         List<SysMenu> menus = getMenus(roles);
         Map<String, Object> userMap = new HashMap<String, Object>();
         userMap.put("id", user.getId());
@@ -127,16 +195,21 @@ public class SysAuthServiceImpl implements SysAuthService {
         Map<String, Object> data = new HashMap<String, Object>();
         data.put("user", userMap);
         data.put("roles", roles.stream().map(SysRole::getRoleCode).collect(Collectors.toList()));
+        if (roles.size() == 1) {
+            data.put("activeRoleId", roles.get(0).getId());
+            data.put("activeRoleCode", roles.get(0).getRoleCode());
+            data.put("activeRoleName", roles.get(0).getRoleName());
+        }
         data.put("permissions", menus.stream().map(SysMenu::getPermissionCode).filter(StringUtils::isNotBlank).collect(Collectors.toList()));
         data.put("menus", menus.stream().map(SysMenu::getMenuPath).filter(this::isMenuPath).collect(Collectors.toList()));
-        data.put("dataScope", roles.stream().anyMatch(item -> "super_admin".equals(item.getRoleCode())) ? "all" : "platform");
+        data.put("dataScope", roles.stream().anyMatch(this::isSuperAdminRole) ? "all" : "platform");
         return data;
     }
 
     @Override
     public List<String> menuPaths(String token) {
         SysUser user = getUserByToken(token);
-        return getMenus(getRoles(user.getId())).stream().map(SysMenu::getMenuPath).filter(this::isMenuPath).collect(Collectors.toList());
+        return getMenus(getEffectiveRoles(token, user.getId())).stream().map(SysMenu::getMenuPath).filter(this::isMenuPath).collect(Collectors.toList());
     }
 
     @Override
@@ -145,8 +218,8 @@ public class SysAuthServiceImpl implements SysAuthService {
             return true;
         }
         SysUser user = getUserByToken(token);
-        List<SysRole> roles = getRoles(user.getId());
-        if (roles.stream().anyMatch(item -> "super_admin".equals(item.getRoleCode()))) {
+        List<SysRole> roles = getEffectiveRoles(token, user.getId());
+        if (roles.stream().anyMatch(this::isSuperAdminRole)) {
             return true;
         }
         return getMenus(roles).stream()
@@ -376,11 +449,43 @@ public class SysAuthServiceImpl implements SysAuthService {
         return sysRoleMapper.selectList(new LambdaQueryWrapper<SysRole>().in(SysRole::getId, roleIds).eq(SysRole::getStatus, "active"));
     }
 
+    private List<SysRole> getEffectiveRoles(String token, Long userId) {
+        Long activeRoleId = tokenService.parseRoleId(token);
+        if (activeRoleId == null) {
+            return getRoles(userId);
+        }
+        SysRole role = ensureUserRole(userId, activeRoleId);
+        List<SysRole> roles = new ArrayList<SysRole>();
+        roles.add(role);
+        return roles;
+    }
+
+    private SysRole ensureUserRole(Long userId, Long roleId) {
+        if (roleId == null) {
+            throw new BusinessException("请选择登录身份");
+        }
+        List<SysRole> roles = getRoles(userId);
+        for (SysRole role : roles) {
+            if (roleId.equals(role.getId())) {
+                return role;
+            }
+        }
+        throw new BusinessException(403, "当前账号没有该身份权限");
+    }
+
+    private List<AuthRoleOption> toRoleOptions(List<SysRole> roles) {
+        List<AuthRoleOption> options = new ArrayList<AuthRoleOption>();
+        for (SysRole role : roles) {
+            options.add(new AuthRoleOption(role.getId(), role.getRoleCode(), role.getRoleName()));
+        }
+        return options;
+    }
+
     private List<SysMenu> getMenus(List<SysRole> roles) {
         if (roles == null || roles.isEmpty()) {
             return new ArrayList<SysMenu>();
         }
-        boolean superAdmin = roles.stream().anyMatch(item -> "super_admin".equals(item.getRoleCode()));
+        boolean superAdmin = roles.stream().anyMatch(this::isSuperAdminRole);
         if (superAdmin) {
             return sysMenuMapper.selectList(new LambdaQueryWrapper<SysMenu>().eq(SysMenu::getStatus, "active").orderByAsc(SysMenu::getSortNo));
         }
@@ -430,8 +535,22 @@ public class SysAuthServiceImpl implements SysAuthService {
         user.setPhone(request.getPhone());
         user.setEmail(request.getEmail());
         user.setUserType(StringUtils.defaultIfBlank(request.getUserType(), "platform"));
-        user.setAdvertiserId(request.getAdvertiserId());
-        user.setAgentId(request.getAgentId());
+        if ("advertiser".equals(user.getUserType())) {
+            if (request.getAdvertiserId() == null) {
+                throw new BusinessException("广告主用户请选择广告主");
+            }
+            user.setAdvertiserId(request.getAdvertiserId());
+            user.setAgentId(null);
+        } else if ("agent".equals(user.getUserType())) {
+            if (request.getAgentId() == null) {
+                throw new BusinessException("代理商用户请选择代理商");
+            }
+            user.setAdvertiserId(null);
+            user.setAgentId(request.getAgentId());
+        } else {
+            user.setAdvertiserId(null);
+            user.setAgentId(null);
+        }
     }
 
     private void saveLoginLog(String username, Long userId, String status, String reason) {
@@ -448,6 +567,14 @@ public class SysAuthServiceImpl implements SysAuthService {
 
     private boolean isMenuPath(String path) {
         return StringUtils.isNotBlank(path) && path.startsWith("/");
+    }
+
+    private boolean isSuperAdminRole(SysRole role) {
+        if (role == null || StringUtils.isBlank(role.getRoleCode())) {
+            return false;
+        }
+        String roleCode = role.getRoleCode();
+        return "super_admin".equals(roleCode) || "admin".equals(roleCode) || "ADM".equalsIgnoreCase(roleCode);
     }
 
     private HttpServletRequest currentRequest() {

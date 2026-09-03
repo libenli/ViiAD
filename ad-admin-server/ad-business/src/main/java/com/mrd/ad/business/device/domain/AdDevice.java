@@ -16,6 +16,10 @@ public class AdDevice extends BaseEntity {
     private String resolution;
     private String ipAddress;
     private String macAddress;
+    private String countryName;
+    private String provinceName;
+    private String cityName;
+    private String regionName;
     private String onlineStatus;
     private String faultStatus;
     private Date lastOnlineTime;
@@ -84,6 +88,38 @@ public class AdDevice extends BaseEntity {
 
     public void setMacAddress(String macAddress) {
         this.macAddress = macAddress;
+    }
+
+    public String getCountryName() {
+        return countryName;
+    }
+
+    public void setCountryName(String countryName) {
+        this.countryName = countryName;
+    }
+
+    public String getProvinceName() {
+        return provinceName;
+    }
+
+    public void setProvinceName(String provinceName) {
+        this.provinceName = provinceName;
+    }
+
+    public String getCityName() {
+        return cityName;
+    }
+
+    public void setCityName(String cityName) {
+        this.cityName = cityName;
+    }
+
+    public String getRegionName() {
+        return regionName;
+    }
+
+    public void setRegionName(String regionName) {
+        this.regionName = regionName;
     }
 
     public String getOnlineStatus() {

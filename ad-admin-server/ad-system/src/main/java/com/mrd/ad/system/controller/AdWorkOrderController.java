@@ -62,4 +62,10 @@ public class AdWorkOrderController {
     public ApiResult<AdWorkOrder> close(@PathVariable Long id, @RequestBody(required = false) AdWorkOrderStatusRequest request) {
         return ApiResult.success(adWorkOrderService.close(id, request == null ? null : request.getContent()));
     }
+
+    @RequiresPermission("workOrder:operate")
+    @PostMapping("/{id}/reopen")
+    public ApiResult<AdWorkOrder> reopen(@PathVariable Long id) {
+        return ApiResult.success(adWorkOrderService.reopen(id));
+    }
 }

@@ -18,6 +18,10 @@ public interface SysAuthService {
 
     Map<String, Object> login(String username, String password);
 
+    Map<String, Object> loginByVerificationCode(String type, String countryCode, String target, String code);
+
+    Map<String, Object> selectRole(String tempToken, Long roleId);
+
     void changePassword(String token, String oldPassword, String newPassword);
 
     Map<String, Object> info(String token);

@@ -28,7 +28,61 @@ mybatis-plus:
       logic-delete-value: 1
       logic-not-delete-value: 0
 
+
+dubbo:
+  application:
+    name: viiad-server
+
+  scan:
+    base-packages: com.mrd.ad
+
+  protocol:
+    name: dubbo
+    port: 20895
+    serialization: kryo
+    optimizer: com.mysher.mtalk.serializer.SerializationOptimizerImpl
+
+  registry:
+    address: zookeeper://localhost:12181
+    file: /opt/dubbo-cache/viiad-server/dubbo.cache
+    check: true
+    simplified: true
+
+  reference:
+    check: false
+
+  consumer:
+    check: false
+    timeout: 5000
+
 mrd:
+  auth:
+    captcha:
+      expire-seconds: ${MRD_AUTH_CAPTCHA_EXPIRE_SECONDS:180}
+    verification-code:
+      expire-seconds: ${MRD_AUTH_CODE_EXPIRE_SECONDS:300}
+      max-send-per-hour: ${MRD_AUTH_CODE_MAX_SEND_PER_HOUR:5}
+      mock-send: ${MRD_AUTH_CODE_MOCK_SEND:true}
+    forgot-password:
+      reset-token-expire-seconds: ${MRD_AUTH_RESET_TOKEN_EXPIRE_SECONDS:300}
+    sms:
+      access-key-id: ${MRD_SMS_ACCESS_KEY_ID:}
+      access-key-secret: ${MRD_SMS_ACCESS_KEY_SECRET:}
+      sign-name: ${MRD_SMS_SIGN_NAME:}
+      region-id: ${MRD_SMS_REGION_ID:cn-hangzhou}
+      template-code:
+        zh: ${MRD_SMS_TEMPLATE_ZH:}
+        en: ${MRD_SMS_TEMPLATE_EN:}
+        overseas: ${MRD_SMS_TEMPLATE_OVERSEAS:}
+    email:
+      host: ${MRD_EMAIL_HOST:}
+      port: ${MRD_EMAIL_PORT:465}
+      username: ${MRD_EMAIL_USERNAME:}
+      password: ${MRD_EMAIL_PASSWORD:}
+      from: ${MRD_EMAIL_FROM:}
+      from-name: ${MRD_EMAIL_FROM_NAME:ViiAD}
+      ssl: ${MRD_EMAIL_SSL:true}
+      starttls: ${MRD_EMAIL_STARTTLS:false}
   upload:
     provider: local
     local-path: ${MRD_UPLOAD_LOCAL_PATH:./uploads}
@@ -40,3 +94,14 @@ mrd:
       access-key-secret: ${MRD_OSS_ACCESS_KEY_SECRET:}
       bucket-name: ${MRD_OSS_BUCKET_NAME:}
       public-base-url: ${MRD_OSS_PUBLIC_BASE_URL:}
+  mq:
+    enabled: ${MRD_MQ_ENABLED:true}
+    host: ${MRD_MQ_HOST:localhost}
+    port: ${MRD_MQ_PORT:2772}
+    username: ${MRD_MQ_USERNAME:MysherViiTALK}
+    password: ${MRD_MQ_PASSWORD:Mysher.com.viitalk}
+    viiad-c2s-rule: '{"exchangeType":"direct","exchange":"mysher.exchange.direct.command.c2s","binding":"vii_ad.c2s","queueName":"mysher.server.viiad.c2s"}'
+    only-china-device: ${MRD_MQ_ONLY_CHINA_DEVICE:true}
+
+
+

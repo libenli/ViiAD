@@ -2,15 +2,21 @@
   <div class="forbidden-page">
     <section class="forbidden-card">
       <div class="status-code">401</div>
-      <h1>暂无访问权限</h1>
-      <p>当前账号没有访问该页面的权限。如需继续操作，请联系系统管理员调整角色授权。</p>
+      <h1>{{ locale.t('page.error.forbiddenTitle') }}</h1>
+      <p>{{ locale.t('page.error.forbiddenDesc') }}</p>
       <div class="actions">
-        <el-button type="primary" @click="$router.replace('/dashboard')">返回工作台</el-button>
-        <el-button @click="$router.back()">返回上一页</el-button>
+        <el-button type="primary" @click="$router.replace('/dashboard')">{{ locale.t('page.error.backDashboard') }}</el-button>
+        <el-button @click="$router.back()">{{ locale.t('page.error.backPrevious') }}</el-button>
       </div>
     </section>
   </div>
 </template>
+
+<script setup lang="ts">
+import { useLocaleStore } from '@/stores/locale'
+
+const locale = useLocaleStore()
+</script>
 
 <style scoped>
 .forbidden-page {

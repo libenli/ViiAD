@@ -16,6 +16,8 @@ public interface AdDeliveryService {
 
     void dispatchPlan(Long planId, List<Long> deviceIds, String deliveryType);
 
+    void stopPlan(Long planId, List<Long> deviceIds, String deliveryType);
+
     AdDeliveryRecord markSuccess(Long id, String responseMsg);
 
     AdDeliveryRecord markFailed(Long id, String responseMsg);

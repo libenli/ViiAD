@@ -19,6 +19,8 @@ public class AdBill {
     private String status;
     private Date confirmTime;
     private Date payTime;
+    private String paymentVoucherNo;
+    private String paymentVoucherUrl;
     private Date createTime;
     private Date updateTime;
 
@@ -108,6 +110,22 @@ public class AdBill {
 
     public void setPayTime(Date payTime) {
         this.payTime = payTime;
+    }
+
+    public String getPaymentVoucherNo() {
+        return paymentVoucherNo;
+    }
+
+    public void setPaymentVoucherNo(String paymentVoucherNo) {
+        this.paymentVoucherNo = paymentVoucherNo;
+    }
+
+    public String getPaymentVoucherUrl() {
+        return paymentVoucherUrl;
+    }
+
+    public void setPaymentVoucherUrl(String paymentVoucherUrl) {
+        this.paymentVoucherUrl = paymentVoucherUrl;
     }
 
     public Date getCreateTime() {

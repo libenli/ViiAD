@@ -14,13 +14,26 @@ import java.util.UUID;
 public class SysTokenService {
 
     private static final String PREFIX = "mrd";
+    private static final String TEMP_PREFIX = "mrdtmp";
     private static final String SECRET = "MRD_AD_ADMIN_2026_TOKEN_SECRET";
     private static final long EXPIRE_MILLIS = 8L * 60L * 60L * 1000L;
+    private static final long TEMP_EXPIRE_MILLIS = 10L * 60L * 1000L;
 
     public String createToken(Long userId) {
+        return createToken(userId, null);
+    }
+
+    public String createToken(Long userId, Long roleId) {
         long expireAt = System.currentTimeMillis() + EXPIRE_MILLIS;
-        String payload = userId + "." + expireAt + "." + UUID.randomUUID().toString().replace("-", "");
+        String rolePart = roleId == null ? "0" : String.valueOf(roleId);
+        String payload = userId + "." + expireAt + "." + rolePart + "." + UUID.randomUUID().toString().replace("-", "");
         return PREFIX + "." + encode(payload) + "." + sign(payload);
+    }
+
+    public String createTempToken(Long userId) {
+        long expireAt = System.currentTimeMillis() + TEMP_EXPIRE_MILLIS;
+        String payload = userId + "." + expireAt + "." + UUID.randomUUID().toString().replace("-", "");
+        return TEMP_PREFIX + "." + encode(payload) + "." + sign(payload);
     }
 
     public Long parseUserId(String token) {
@@ -29,27 +42,43 @@ public class SysTokenService {
             if (StringUtils.startsWith(value, "rbac-")) {
                 return parseLegacyToken(value);
             }
-            String[] parts = value.split("\\.");
-            if (parts.length != 3 || !PREFIX.equals(parts[0])) {
-                throw new BusinessException(401, "登录已失效");
-            }
-            String payload = decode(parts[1]);
-            if (!StringUtils.equals(sign(payload), parts[2])) {
-                throw new BusinessException(401, "登录已失效");
-            }
-            String[] payloadParts = payload.split("\\.");
-            if (payloadParts.length < 3) {
-                throw new BusinessException(401, "登录已失效");
-            }
-            long expireAt = Long.parseLong(payloadParts[1]);
-            if (System.currentTimeMillis() > expireAt) {
-                throw new BusinessException(401, "登录已过期");
-            }
-            return Long.valueOf(payloadParts[0]);
+            String[] parts = splitToken(value, PREFIX, "登录已失效");
+            return Long.valueOf(parsePayload(parts[1], parts[2], "登录已失效")[0]);
         } catch (BusinessException ex) {
             throw ex;
         } catch (Exception ex) {
             throw new BusinessException(401, "登录已失效");
+        }
+    }
+
+    public Long parseRoleId(String token) {
+        try {
+            String value = normalize(token);
+            if (StringUtils.startsWith(value, "rbac-")) {
+                return null;
+            }
+            String[] parts = splitToken(value, PREFIX, "登录已失效");
+            String[] payloadParts = parsePayload(parts[1], parts[2], "登录已失效");
+            if (payloadParts.length < 4 || "0".equals(payloadParts[2])) {
+                return null;
+            }
+            return Long.valueOf(payloadParts[2]);
+        } catch (BusinessException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new BusinessException(401, "登录已失效");
+        }
+    }
+
+    public Long parseTempUserId(String tempToken) {
+        try {
+            String value = normalize(tempToken);
+            String[] parts = splitToken(value, TEMP_PREFIX, "身份选择已失效，请重新登录");
+            return Long.valueOf(parsePayload(parts[1], parts[2], "身份选择已失效，请重新登录")[0]);
+        } catch (BusinessException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new BusinessException(401, "身份选择已失效，请重新登录");
         }
     }
 
@@ -66,6 +95,30 @@ public class SysTokenService {
             throw new BusinessException(401, "未登录");
         }
         return token.replace("Bearer ", "");
+    }
+
+    private String[] splitToken(String value, String expectedPrefix, String errorMessage) {
+        String[] parts = value.split("\\.");
+        if (parts.length != 3 || !expectedPrefix.equals(parts[0])) {
+            throw new BusinessException(401, errorMessage);
+        }
+        return parts;
+    }
+
+    private String[] parsePayload(String encodedPayload, String signature, String errorMessage) {
+        String payload = decode(encodedPayload);
+        if (!StringUtils.equals(sign(payload), signature)) {
+            throw new BusinessException(401, errorMessage);
+        }
+        String[] payloadParts = payload.split("\\.");
+        if (payloadParts.length < 3) {
+            throw new BusinessException(401, errorMessage);
+        }
+        long expireAt = Long.parseLong(payloadParts[1]);
+        if (System.currentTimeMillis() > expireAt) {
+            throw new BusinessException(401, errorMessage);
+        }
+        return payloadParts;
     }
 
     private String encode(String value) {

@@ -1,52 +1,52 @@
 <template>
-  <AppPage eyebrow="设备投放" title="设备详情" :stats="stats">
+  <AppPage :eyebrow="locale.t('page.deviceDelivery')" :title="locale.t('page.devices.detailTitle')" :stats="stats">
     <template #actions>
-      <el-button @click="router.push('/devices')">返回列表</el-button>
-      <el-button v-if="device && user.hasPermission('device:manage')" type="primary" @click="router.push(`/devices/${device.id}/edit`)">编辑</el-button>
+      <el-button @click="router.push('/devices')">{{ locale.t('common.backToList') }}</el-button>
+      <el-button v-if="device && user.hasPermission('device:manage')" type="primary" @click="router.push(`/devices/${device.id}/edit`)">{{ locale.t('common.edit') }}</el-button>
       <el-button v-if="user.hasPermission('device:manage') && device?.onlineStatus !== 'online' && device?.status === 'active'" type="success" :loading="acting" @click="handleAction('online')">
-        上线
+        {{ locale.t('page.devices.goOnline') }}
       </el-button>
       <el-button v-if="user.hasPermission('device:manage') && device?.onlineStatus === 'online'" type="warning" :loading="acting" @click="handleAction('offline')">
-        离线
+        {{ locale.t('page.devices.goOffline') }}
       </el-button>
       <el-button v-if="user.hasPermission('device:manage') && device?.faultStatus !== 'fault'" type="danger" :loading="acting" @click="handleAction('fault')">
-        标记故障
+        {{ locale.t('page.devices.markFaultFull') }}
       </el-button>
       <el-button v-if="user.hasPermission('device:manage') && device?.faultStatus === 'fault'" type="success" :loading="acting" @click="handleAction('repair')">
-        恢复正常
+        {{ locale.t('page.devices.repairFull') }}
       </el-button>
     </template>
 
     <el-skeleton v-if="loading" :rows="8" animated />
     <el-descriptions v-else-if="device" :column="2" border>
-      <el-descriptions-item label="设备编号">{{ device.deviceCode }}</el-descriptions-item>
-      <el-descriptions-item label="设备名称">{{ device.deviceName }}</el-descriptions-item>
-      <el-descriptions-item label="楼宇ID">{{ device.buildingId || '-' }}</el-descriptions-item>
-      <el-descriptions-item label="楼层">{{ device.floorNo || '-' }}</el-descriptions-item>
-      <el-descriptions-item label="屏幕尺寸">{{ device.screenSize || '-' }}</el-descriptions-item>
-      <el-descriptions-item label="分辨率">{{ device.resolution || '-' }}</el-descriptions-item>
-      <el-descriptions-item label="IP地址">{{ device.ipAddress || '-' }}</el-descriptions-item>
-      <el-descriptions-item label="MAC地址">{{ device.macAddress || '-' }}</el-descriptions-item>
-      <el-descriptions-item label="在线状态">
+      <el-descriptions-item :label="locale.t('page.devices.code')">{{ device.deviceCode }}</el-descriptions-item>
+      <el-descriptions-item :label="locale.t('page.devices.name')">{{ device.deviceName }}</el-descriptions-item>
+      <el-descriptions-item :label="locale.t('page.devices.buildingId')">{{ device.buildingId || '-' }}</el-descriptions-item>
+      <el-descriptions-item :label="locale.t('page.devices.floor')">{{ device.floorNo || '-' }}</el-descriptions-item>
+      <el-descriptions-item :label="locale.t('page.devices.screenSize')">{{ device.screenSize || '-' }}</el-descriptions-item>
+      <el-descriptions-item :label="locale.t('page.devices.resolution')">{{ device.resolution || '-' }}</el-descriptions-item>
+      <el-descriptions-item :label="locale.t('page.devices.ip')">{{ device.ipAddress || '-' }}</el-descriptions-item>
+      <el-descriptions-item :label="locale.t('page.devices.mac')">{{ device.macAddress || '-' }}</el-descriptions-item>
+      <el-descriptions-item :label="locale.t('page.devices.onlineStatus')">
         <el-tag :type="onlineStatusMap[device.onlineStatus]?.type || 'info'" effect="dark">
-          {{ onlineStatusMap[device.onlineStatus]?.label || device.onlineStatus }}
+          {{ getOnlineLabel(device.onlineStatus) }}
         </el-tag>
       </el-descriptions-item>
-      <el-descriptions-item label="故障状态">
+      <el-descriptions-item :label="locale.t('page.devices.faultStatus')">
         <el-tag :type="faultStatusMap[device.faultStatus]?.type || 'info'" effect="dark">
-          {{ faultStatusMap[device.faultStatus]?.label || device.faultStatus }}
+          {{ getFaultLabel(device.faultStatus) }}
         </el-tag>
       </el-descriptions-item>
-      <el-descriptions-item label="设备状态">
+      <el-descriptions-item :label="locale.t('page.devices.deviceStatus')">
         <el-tag :type="deviceStatusMap[device.status]?.type || 'info'" effect="dark">
-          {{ deviceStatusMap[device.status]?.label || device.status }}
+          {{ getDeviceStatusLabel(device.status) }}
         </el-tag>
       </el-descriptions-item>
-      <el-descriptions-item label="当前计划ID">{{ device.currentPlanId || '-' }}</el-descriptions-item>
-      <el-descriptions-item label="最后在线时间">{{ device.lastOnlineTime || '-' }}</el-descriptions-item>
-      <el-descriptions-item label="创建时间">{{ device.createTime || '-' }}</el-descriptions-item>
+      <el-descriptions-item :label="locale.t('page.devices.currentPlanId')">{{ device.currentPlanId || '-' }}</el-descriptions-item>
+      <el-descriptions-item :label="locale.t('page.devices.lastOnlineTime')">{{ device.lastOnlineTime || '-' }}</el-descriptions-item>
+      <el-descriptions-item :label="locale.t('page.devices.createTime')">{{ device.createTime || '-' }}</el-descriptions-item>
     </el-descriptions>
-    <el-empty v-else description="设备不存在" />
+    <el-empty v-else :description="locale.t('page.devices.deviceNotFound')" />
   </AppPage>
 </template>
 
@@ -67,20 +67,34 @@ import {
   setDeviceOnline,
   type AdDevice
 } from '@/api/devices'
+import { useLocaleStore } from '@/stores/locale'
 
 const route = useRoute()
 const router = useRouter()
+const locale = useLocaleStore()
 const user = useUserStore()
 const loading = ref(false)
 const acting = ref(false)
 const device = ref<AdDevice>()
 
 const stats = computed(() => [
-  { label: '在线状态', value: device.value ? onlineStatusMap[device.value.onlineStatus]?.label || device.value.onlineStatus : '-' },
-  { label: '故障状态', value: device.value ? faultStatusMap[device.value.faultStatus]?.label || device.value.faultStatus : '-' },
-  { label: '设备状态', value: device.value ? deviceStatusMap[device.value.status]?.label || device.value.status : '-' },
-  { label: '当前计划', value: device.value?.currentPlanId || '-' }
+  { label: locale.t('page.devices.onlineStatus'), value: device.value ? getOnlineLabel(device.value.onlineStatus) : '-' },
+  { label: locale.t('page.devices.faultStatus'), value: device.value ? getFaultLabel(device.value.faultStatus) : '-' },
+  { label: locale.t('page.devices.deviceStatus'), value: device.value ? getDeviceStatusLabel(device.value.status) : '-' },
+  { label: locale.t('page.devices.currentPlan'), value: device.value?.currentPlanId || '-' }
 ])
+
+function getOnlineLabel(value: string) {
+  return locale.t(`status.online.${value}`, onlineStatusMap[value]?.label || value)
+}
+
+function getFaultLabel(value: string) {
+  return locale.t(`status.fault.${value}`, faultStatusMap[value]?.label || value)
+}
+
+function getDeviceStatusLabel(value: string) {
+  return locale.t(`status.device.${value}`, deviceStatusMap[value]?.label || value)
+}
 
 async function loadDetail() {
   loading.value = true
@@ -97,15 +111,15 @@ async function handleAction(action: 'online' | 'offline' | 'fault' | 'repair') {
     return
   }
   if (action === 'fault') {
-    await ElMessageBox.confirm('确认将该设备标记为故障吗？', '标记故障', { type: 'warning' })
+    await ElMessageBox.confirm(locale.t('page.devices.faultConfirm'), locale.t('page.devices.faultConfirmTitle'), { type: 'warning' })
   }
   acting.value = true
   try {
     const actionMap = {
-      online: { request: setDeviceOnline, message: '设备已上线' },
-      offline: { request: setDeviceOffline, message: '设备已离线' },
-      fault: { request: markDeviceFault, message: '设备已标记为故障' },
-      repair: { request: repairDevice, message: '设备已恢复正常' }
+      online: { request: setDeviceOnline, message: locale.t('page.devices.onlineDone') },
+      offline: { request: setDeviceOffline, message: locale.t('page.devices.offlineDone') },
+      fault: { request: markDeviceFault, message: locale.t('page.devices.faultDone') },
+      repair: { request: repairDevice, message: locale.t('page.devices.repairDone') }
     }
     const result = await actionMap[action].request(device.value.id)
     device.value = result.data

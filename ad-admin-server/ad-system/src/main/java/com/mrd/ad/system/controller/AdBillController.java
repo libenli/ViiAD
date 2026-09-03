@@ -3,6 +3,7 @@ package com.mrd.ad.system.controller;
 import com.mrd.ad.business.bill.domain.AdBill;
 import com.mrd.ad.business.bill.domain.AdBillDetail;
 import com.mrd.ad.business.bill.dto.AdBillGenerateRequest;
+import com.mrd.ad.business.bill.dto.AdBillPayRequest;
 import com.mrd.ad.business.bill.dto.AdBillQuery;
 import com.mrd.ad.business.bill.service.AdBillService;
 import com.mrd.ad.common.annotation.RequiresPermission;
@@ -62,7 +63,7 @@ public class AdBillController {
     @OperLog(module = "账单结算", businessType = "PAY")
     @RequiresPermission("bill:pay")
     @PostMapping("/{id}/pay")
-    public ApiResult<AdBill> pay(@PathVariable Long id) {
-        return ApiResult.success(adBillService.pay(id));
+    public ApiResult<AdBill> pay(@PathVariable Long id, @Validated @RequestBody AdBillPayRequest request) {
+        return ApiResult.success(adBillService.pay(id, request.getPaymentVoucherNo(), request.getPaymentVoucherUrl()));
     }
 }

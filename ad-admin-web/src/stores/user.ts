@@ -10,10 +10,15 @@ export interface UserInfo {
   advertiserId?: number
   agentId?: number
   roles: string[]
+  activeRoleId?: number
+  activeRoleCode?: string
+  activeRoleName?: string
   permissions: string[]
   menus: string[]
   dataScope?: string
 }
+
+const SUPER_ADMIN_ROLE_CODES = ['super_admin', 'admin', 'ADM']
 
 export const useUserStore = defineStore('user', {
   state: () => ({
@@ -28,7 +33,7 @@ export const useUserStore = defineStore('user', {
       }
       const roles = state.userInfo?.roles || []
       const permissions = state.userInfo?.permissions || []
-      return roles.includes('super_admin') || permissions.includes(permission)
+      return roles.some((role) => SUPER_ADMIN_ROLE_CODES.includes(role)) || permissions.includes(permission)
     },
     isPlatformScope: (state) => state.userInfo?.userType === 'platform',
     isBusinessScope: (state) => ['advertiser', 'agent'].includes(state.userInfo?.userType || ''),
@@ -56,6 +61,9 @@ export const useUserStore = defineStore('user', {
       this.userInfo = {
         ...result.data.user,
         roles: result.data.roles,
+        activeRoleId: result.data.activeRoleId,
+        activeRoleCode: result.data.activeRoleCode,
+        activeRoleName: result.data.activeRoleName,
         permissions: result.data.permissions,
         menus: result.data.menus,
         dataScope: result.data.dataScope

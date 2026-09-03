@@ -1,48 +1,48 @@
 <template>
-  <AppPage eyebrow="账号主体" title="代理商" :stats="stats">
+  <AppPage :eyebrow="locale.t('page.partners.subject')" :title="locale.t('page.partners.agentTitle')" :stats="stats">
     <template #actions>
-      <el-button v-if="user.hasPermission('partner:manage')" type="primary" :icon="Plus" @click="openCreate">新建代理商</el-button>
+      <el-button v-if="user.hasPermission('partner:manage')" type="primary" :icon="Plus" @click="openCreate">{{ locale.t('page.partners.createAgent') }}</el-button>
     </template>
 
     <el-form class="filter-form" :model="query" inline>
-      <el-form-item label="关键词">
-        <el-input v-model="query.keyword" clearable placeholder="代理商 / 编号" />
+      <el-form-item :label="locale.t('page.partners.keyword')">
+        <el-input v-model="query.keyword" clearable :placeholder="locale.t('page.partners.agentKeywordPlaceholder')" />
       </el-form-item>
-      <el-form-item label="状态">
-        <el-select v-model="query.status" clearable placeholder="全部状态" style="width: 140px">
-          <el-option v-for="(item, key) in partnerStatusMap" :key="key" :label="item.label" :value="key" />
+      <el-form-item :label="locale.t('page.partners.status')">
+        <el-select v-model="query.status" clearable :placeholder="locale.t('page.partners.allStatus')" style="width: 140px">
+          <el-option v-for="(item, key) in partnerStatusMap" :key="key" :label="getStatusLabel('partner', String(key), item.label)" :value="key" />
         </el-select>
       </el-form-item>
       <el-form-item>
-        <el-button type="primary" :icon="Search" @click="loadAgents">查询</el-button>
-        <el-button :icon="Refresh" @click="resetQuery">重置</el-button>
+        <el-button type="primary" :icon="Search" @click="loadAgents">{{ locale.t('common.search') }}</el-button>
+        <el-button :icon="Refresh" @click="resetQuery">{{ locale.t('common.reset') }}</el-button>
       </el-form-item>
     </el-form>
 
     <el-table v-loading="loading" :data="records" class="data-table" row-key="id">
-      <el-table-column prop="agentCode" label="代理商编号" min-width="170" />
-      <el-table-column prop="agentName" label="代理商名称" min-width="190" />
-      <el-table-column prop="contactName" label="联系人" width="110" />
-      <el-table-column prop="contactPhone" label="电话" min-width="140" />
-      <el-table-column prop="contactEmail" label="邮箱" min-width="170" />
-      <el-table-column label="状态" width="100">
+      <el-table-column prop="agentCode" :label="locale.t('page.partners.agentCode')" min-width="170" />
+      <el-table-column prop="agentName" :label="locale.t('page.partners.agentName')" min-width="190" />
+      <el-table-column prop="contactName" :label="locale.t('page.partners.contactName')" width="110" />
+      <el-table-column prop="contactPhone" :label="locale.t('page.partners.contactPhone')" min-width="140" />
+      <el-table-column prop="contactEmail" :label="locale.t('page.partners.contactEmail')" min-width="170" />
+      <el-table-column :label="locale.t('page.partners.status')" width="100">
         <template #default="{ row }">
           <el-tag :type="partnerStatusMap[row.status]?.type || 'info'" effect="dark">
-            {{ partnerStatusMap[row.status]?.label || row.status }}
+            {{ getStatusLabel('partner', row.status, partnerStatusMap[row.status]?.label || row.status) }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="createTime" label="创建时间" min-width="170" />
-      <el-table-column label="操作" min-width="220" class-name="operation-column">
+      <el-table-column prop="createTime" :label="locale.t('page.partners.createTime')" min-width="170" />
+      <el-table-column :label="locale.t('common.operation')" width="170" fixed="right" class-name="operation-column">
         <template #default="{ row }">
-          <el-button link type="primary" @click="openDetail(row)">详情</el-button>
-          <el-button v-if="user.hasPermission('partner:manage')" link type="primary" @click="openEdit(row)">编辑</el-button>
-          <el-button v-if="user.hasPermission('partner:manage') && row.status === 'active'" link type="warning" @click="handleDisable(row.id)">停用</el-button>
-          <el-button v-else-if="user.hasPermission('partner:manage')" link type="success" @click="handleEnable(row.id)">启用</el-button>
+          <el-button link type="primary" @click="openDetail(row)">{{ locale.t('common.detail') }}</el-button>
+          <el-button v-if="user.hasPermission('partner:manage')" link type="primary" @click="openEdit(row)">{{ locale.t('common.edit') }}</el-button>
+          <el-button v-if="user.hasPermission('partner:manage') && row.status === 'active'" link type="warning" @click="handleDisable(row.id)">{{ locale.t('page.partners.disable') }}</el-button>
+          <el-button v-else-if="user.hasPermission('partner:manage')" link type="success" @click="handleEnable(row.id)">{{ locale.t('page.partners.enable') }}</el-button>
         </template>
       </el-table-column>
       <template #empty>
-        <el-empty description="暂无代理商，可先新建代理商后关联广告" />
+        <el-empty :description="locale.t('page.partners.agentEmpty')" />
       </template>
     </el-table>
 
@@ -58,38 +58,38 @@
       />
     </div>
 
-    <el-drawer v-model="drawerVisible" title="代理商详情" size="460px">
+    <el-drawer v-model="drawerVisible" :title="locale.t('page.partners.agentDrawer')" size="460px">
       <el-descriptions v-if="current" :column="1" border>
-        <el-descriptions-item label="编号">{{ current.agentCode }}</el-descriptions-item>
-        <el-descriptions-item label="名称">{{ current.agentName }}</el-descriptions-item>
-        <el-descriptions-item label="联系人">{{ current.contactName || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="电话">{{ current.contactPhone || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="邮箱">{{ current.contactEmail || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="备注">{{ current.remark || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.partners.code')">{{ current.agentCode }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.partners.name')">{{ current.agentName }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.partners.contactName')">{{ current.contactName || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.partners.contactPhone')">{{ current.contactPhone || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.partners.email')">{{ current.contactEmail || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.partners.remark')">{{ current.remark || '-' }}</el-descriptions-item>
       </el-descriptions>
     </el-drawer>
 
-    <el-dialog v-model="dialogVisible" :title="editingId ? '编辑代理商' : '新建代理商'" width="560px">
-      <el-form :model="form" label-width="100px">
-        <el-form-item label="代理商名称" required>
-          <el-input v-model="form.agentName" placeholder="请输入代理商名称" />
+    <el-dialog v-model="dialogVisible" :title="editingId ? locale.t('page.partners.editAgent') : locale.t('page.partners.createAgent')" width="560px">
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
+        <el-form-item :label="locale.t('page.partners.agentName')" prop="agentName">
+          <el-input v-model="form.agentName" :placeholder="locale.t('page.partners.agentNamePlaceholder')" />
         </el-form-item>
-        <el-form-item label="联系人">
-          <el-input v-model="form.contactName" placeholder="请输入联系人" />
+        <el-form-item :label="locale.t('page.partners.contactName')">
+          <el-input v-model="form.contactName" :placeholder="locale.t('page.partners.contactPlaceholder')" />
         </el-form-item>
-        <el-form-item label="电话">
-          <el-input v-model="form.contactPhone" placeholder="请输入联系电话" />
+        <el-form-item :label="locale.t('page.partners.contactPhone')" prop="contactPhone">
+          <el-input v-model="form.contactPhone" :placeholder="locale.t('page.partners.phonePlaceholder')" />
         </el-form-item>
-        <el-form-item label="邮箱">
-          <el-input v-model="form.contactEmail" placeholder="请输入联系邮箱" />
+        <el-form-item :label="locale.t('page.partners.contactEmail')" prop="contactEmail">
+          <el-input v-model="form.contactEmail" :placeholder="locale.t('page.partners.emailPlaceholder')" />
         </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="form.remark" type="textarea" :rows="3" placeholder="请输入备注" />
+        <el-form-item :label="locale.t('page.partners.remark')">
+          <el-input v-model="form.remark" type="textarea" :rows="3" :placeholder="locale.t('page.partners.remarkPlaceholder')" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
+        <el-button @click="dialogVisible = false">{{ locale.t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="saving" @click="handleSave">{{ locale.t('common.save') }}</el-button>
       </template>
     </el-dialog>
   </AppPage>
@@ -97,9 +97,10 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { Plus, Refresh, Search } from '@element-plus/icons-vue'
 import AppPage from '@/components/AppPage.vue'
+import { useLocaleStore } from '@/stores/locale'
 import { useUserStore } from '@/stores/user'
 import {
   createAgent,
@@ -111,8 +112,10 @@ import {
   type Agent,
   type AgentPayload
 } from '@/api/partners'
+import { isValidEmail, isValidPhone } from '@/utils/validators'
 
 const loading = ref(false)
+const locale = useLocaleStore()
 const user = useUserStore()
 const saving = ref(false)
 const drawerVisible = ref(false)
@@ -121,6 +124,7 @@ const editingId = ref<number>()
 const records = ref<Agent[]>([])
 const current = ref<Agent>()
 const total = ref(0)
+const formRef = ref<FormInstance>()
 
 const query = reactive({ keyword: '', status: '', page: 1, size: 10 })
 const form = reactive<AgentPayload>({
@@ -132,11 +136,29 @@ const form = reactive<AgentPayload>({
 })
 
 const stats = computed(() => [
-  { label: '全部代理商', value: total.value },
-  { label: '启用', value: records.value.filter((item) => item.status === 'active').length },
-  { label: '停用', value: records.value.filter((item) => item.status === 'disabled').length },
-  { label: '本页新增', value: records.value.length }
+  { label: locale.t('page.partners.totalAgents'), value: total.value },
+  { label: getStatusLabel('partner', 'active', '启用'), value: records.value.filter((item) => item.status === 'active').length },
+  { label: getStatusLabel('partner', 'disabled', '停用'), value: records.value.filter((item) => item.status === 'disabled').length },
+  { label: locale.t('page.partners.currentPage'), value: records.value.length }
 ])
+
+const rules = computed<FormRules>(() => ({
+  agentName: [{ required: true, message: locale.t('page.partners.agentNameRequired'), trigger: 'blur' }],
+  contactPhone: [{ validator: validatePhone, trigger: 'blur' }],
+  contactEmail: [{ validator: validateEmail, trigger: 'blur' }]
+}))
+
+function getStatusLabel(group: string, value: string, fallback: string) {
+  return locale.t(`status.${group}.${value}`, fallback)
+}
+
+function validatePhone(_rule: unknown, value: string, callback: (error?: Error) => void) {
+  callback(isValidPhone(value) ? undefined : new Error(locale.t('common.invalidPhone')))
+}
+
+function validateEmail(_rule: unknown, value: string, callback: (error?: Error) => void) {
+  callback(isValidEmail(value) ? undefined : new Error(locale.t('common.invalidEmail')))
+}
 
 async function loadAgents() {
   loading.value = true
@@ -176,14 +198,11 @@ function openDetail(row: Agent) {
 }
 
 async function handleSave() {
-  if (!form.agentName) {
-    ElMessage.warning('请输入代理商名称')
-    return
-  }
+  await formRef.value?.validate()
   saving.value = true
   try {
     editingId.value ? await updateAgent(editingId.value, form) : await createAgent(form)
-    ElMessage.success('代理商已保存')
+    ElMessage.success(locale.t('page.partners.agentSaved'))
     dialogVisible.value = false
     loadAgents()
   } finally {
@@ -192,15 +211,15 @@ async function handleSave() {
 }
 
 async function handleDisable(id: number) {
-  await ElMessageBox.confirm('确认停用该代理商吗？', '停用代理商', { type: 'warning' })
+  await ElMessageBox.confirm(locale.t('page.partners.disableAgentConfirm'), locale.t('page.partners.disableAgentTitle'), { type: 'warning' })
   await disableAgent(id)
-  ElMessage.success('代理商已停用')
+  ElMessage.success(locale.t('page.partners.agentDisabled'))
   loadAgents()
 }
 
 async function handleEnable(id: number) {
   await enableAgent(id)
-  ElMessage.success('代理商已启用')
+  ElMessage.success(locale.t('page.partners.agentEnabled'))
   loadAgents()
 }
 

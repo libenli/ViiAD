@@ -58,3 +58,7 @@ export function startWorkOrder(id: number) {
 export function closeWorkOrder(id: number, content?: string) {
   return request.post(`/workorders/${id}/close`, { content }) as Promise<ApiResponse<WorkOrder>>
 }
+
+export function reopenWorkOrder(id: number) {
+  return request.post(`/workorders/${id}/reopen`) as Promise<ApiResponse<WorkOrder>>
+}

@@ -48,7 +48,7 @@ public class AdOrderServiceImpl implements AdOrderService {
             wrapper.eq(AdOrder::getAgentId, query.getAgentId());
         }
         if (StringUtils.isNotBlank(query.getRegionCode())) {
-            wrapper.eq(AdOrder::getRegionCode, query.getRegionCode());
+            wrapper.like(AdOrder::getRegionCode, query.getRegionCode());
         }
         if (StringUtils.isNotBlank(query.getAdType())) {
             wrapper.eq(AdOrder::getAdType, query.getAdType());
@@ -142,14 +142,14 @@ public class AdOrderServiceImpl implements AdOrderService {
     }
 
     private void copyRequest(AdOrderCreateRequest request, AdOrder adOrder) {
-        adOrder.setAdName(request.getAdName());
+        adOrder.setAdName(StringUtils.trim(request.getAdName()));
         adOrder.setAdvertiserId(request.getAdvertiserId());
         adOrder.setAgentId(request.getAgentId());
         adOrder.setAdType(request.getAdType());
         adOrder.setObjective(request.getObjective());
-        adOrder.setRegionCode(request.getRegionCode());
+        adOrder.setRegionCode(StringUtils.trim(request.getRegionCode()));
         adOrder.setBudgetAmount(request.getBudgetAmount());
-        adOrder.setDescription(request.getDescription());
+        adOrder.setDescription(StringUtils.trimToNull(request.getDescription()));
     }
 
     private String nextAdCode(Date date) {

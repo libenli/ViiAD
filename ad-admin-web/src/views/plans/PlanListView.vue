@@ -1,81 +1,81 @@
 <template>
-  <AppPage eyebrow="广告业务" title="投放计划" :stats="stats">
+  <AppPage :eyebrow="locale.t('page.business')" :title="locale.t('page.plans.title')" :stats="stats">
     <template #actions>
       <el-button v-if="user.hasPermission('plan:edit')" type="primary" :icon="Plus" @click="router.push('/plans/create')">
-        新建计划
+        {{ locale.t('page.plans.create') }}
       </el-button>
     </template>
 
     <el-form class="filter-form" :model="query" inline>
-      <el-form-item label="关键词">
-        <el-input v-model="query.keyword" clearable placeholder="计划名称 / 编号" />
+      <el-form-item :label="locale.t('page.plans.keyword')">
+        <el-input v-model="query.keyword" clearable :placeholder="locale.t('page.plans.keywordPlaceholder')" />
       </el-form-item>
-      <el-form-item label="广告ID">
+      <el-form-item :label="locale.t('page.plans.adId')">
         <el-input-number v-model="query.adId" :min="1" controls-position="right" />
       </el-form-item>
-      <el-form-item label="排期状态">
-        <el-select v-model="query.scheduleStatus" clearable placeholder="全部排期" style="width: 150px">
-          <el-option v-for="(item, key) in scheduleStatusMap" :key="key" :label="item.label" :value="key" />
+      <el-form-item :label="locale.t('page.plans.scheduleStatus')">
+        <el-select v-model="query.scheduleStatus" clearable :placeholder="locale.t('page.plans.allSchedule')" style="width: 150px">
+          <el-option v-for="(item, key) in scheduleStatusMap" :key="key" :label="getStatusLabel('schedule', String(key), item.label)" :value="key" />
         </el-select>
       </el-form-item>
-      <el-form-item label="投放状态">
-        <el-select v-model="query.deliveryStatus" clearable placeholder="全部投放" style="width: 150px">
-          <el-option v-for="(item, key) in deliveryStatusMap" :key="key" :label="item.label" :value="key" />
+      <el-form-item :label="locale.t('page.plans.deliveryStatus')">
+        <el-select v-model="query.deliveryStatus" clearable :placeholder="locale.t('page.plans.allDelivery')" style="width: 150px">
+          <el-option v-for="(item, key) in deliveryStatusMap" :key="key" :label="getStatusLabel('delivery', String(key), item.label)" :value="key" />
         </el-select>
       </el-form-item>
       <el-form-item>
-        <el-button type="primary" :icon="Search" @click="loadPlans">查询</el-button>
-        <el-button :icon="Refresh" @click="resetQuery">重置</el-button>
+        <el-button type="primary" :icon="Search" @click="loadPlans">{{ locale.t('common.search') }}</el-button>
+        <el-button :icon="Refresh" @click="resetQuery">{{ locale.t('common.reset') }}</el-button>
       </el-form-item>
     </el-form>
 
     <el-table v-loading="loading" :data="records" class="data-table" row-key="id">
-      <el-table-column prop="planCode" label="计划编号" min-width="180" />
-      <el-table-column prop="planName" label="计划名称" min-width="220" />
-      <el-table-column prop="adId" label="广告ID" width="100" />
-      <el-table-column prop="regionCode" label="投放区域" min-width="140" />
-      <el-table-column label="投放周期" min-width="260">
+      <el-table-column prop="planCode" :label="locale.t('page.plans.code')" min-width="180" />
+      <el-table-column prop="planName" :label="locale.t('page.plans.name')" min-width="220" />
+      <el-table-column prop="adId" :label="locale.t('page.plans.adId')" width="100" />
+      <el-table-column prop="regionCode" :label="locale.t('page.plans.region')" min-width="140" />
+      <el-table-column :label="locale.t('page.plans.period')" min-width="260">
         <template #default="{ row }">
           {{ row.startTime || '-' }} 至 {{ row.endTime || '-' }}
         </template>
       </el-table-column>
-      <el-table-column label="排期" width="110">
+      <el-table-column :label="locale.t('page.plans.schedule')" width="110">
         <template #default="{ row }">
           <el-tag :type="scheduleStatusMap[row.scheduleStatus]?.type || 'info'" effect="dark">
-            {{ scheduleStatusMap[row.scheduleStatus]?.label || row.scheduleStatus }}
+            {{ getStatusLabel('schedule', row.scheduleStatus, scheduleStatusMap[row.scheduleStatus]?.label || row.scheduleStatus) }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="投放" width="110">
+      <el-table-column :label="locale.t('page.plans.delivery')" width="110">
         <template #default="{ row }">
           <el-tag :type="deliveryStatusMap[row.deliveryStatus]?.type || 'info'" effect="dark">
-            {{ deliveryStatusMap[row.deliveryStatus]?.label || row.deliveryStatus }}
+            {{ getStatusLabel('delivery', row.deliveryStatus, deliveryStatusMap[row.deliveryStatus]?.label || row.deliveryStatus) }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="createTime" label="创建时间" min-width="170" />
-      <el-table-column label="操作" min-width="300" class-name="operation-column">
+      <el-table-column prop="createTime" :label="locale.t('page.plans.createTime')" min-width="170" />
+      <el-table-column :label="locale.t('common.operation')" width="220" fixed="right" class-name="operation-column">
         <template #default="{ row }">
-          <el-button link type="primary" @click="router.push(`/plans/${row.id}`)">详情</el-button>
+          <el-button link type="primary" @click="router.push(`/plans/${row.id}`)">{{ locale.t('common.detail') }}</el-button>
           <el-button v-if="user.hasPermission('plan:edit') && canEdit(row)" link type="primary" @click="router.push(`/plans/${row.id}/edit`)">
-            编辑
+            {{ locale.t('common.edit') }}
           </el-button>
           <el-button v-if="user.hasPermission('plan:schedule') && row.scheduleStatus === 'draft'" link type="warning" @click="handleSchedule(row.id)">
-            提交排期
+            {{ locale.t('page.plans.submitSchedule') }}
           </el-button>
           <el-button v-if="user.hasPermission('plan:delivery') && canStart(row)" link type="success" @click="handleStart(row.id)">
-            启动
+            {{ locale.t('page.plans.start') }}
           </el-button>
           <el-button v-if="user.hasPermission('plan:delivery') && row.deliveryStatus === 'live'" link type="warning" @click="handlePause(row.id)">
-            暂停
+            {{ locale.t('page.plans.pause') }}
           </el-button>
           <el-button v-if="user.hasPermission('plan:delivery') && canFinish(row)" link type="danger" @click="handleFinish(row.id)">
-            结束
+            {{ locale.t('page.plans.finish') }}
           </el-button>
         </template>
       </el-table-column>
       <template #empty>
-        <el-empty description="暂无投放计划，可先创建已审核广告和素材后再新建计划" />
+        <el-empty :description="locale.t('page.plans.empty')" />
       </template>
     </el-table>
 
@@ -99,6 +99,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh, Search } from '@element-plus/icons-vue'
 import AppPage from '@/components/AppPage.vue'
+import { useLocaleStore } from '@/stores/locale'
 import { useUserStore } from '@/stores/user'
 import {
   deliveryStatusMap,
@@ -112,6 +113,7 @@ import {
 } from '@/api/plans'
 
 const router = useRouter()
+const locale = useLocaleStore()
 const user = useUserStore()
 const loading = ref(false)
 const records = ref<AdPlan[]>([])
@@ -127,14 +129,18 @@ const query = reactive({
 })
 
 const stats = computed(() => [
-  { label: '全部计划', value: total.value },
-  { label: '草稿', value: records.value.filter((item) => item.scheduleStatus === 'draft').length },
-  { label: '已排期', value: records.value.filter((item) => item.scheduleStatus === 'scheduled').length },
-  { label: '投放中', value: records.value.filter((item) => item.deliveryStatus === 'live').length }
+  { label: locale.t('page.plans.total'), value: total.value },
+  { label: getStatusLabel('schedule', 'draft', '草稿'), value: records.value.filter((item) => item.scheduleStatus === 'draft').length },
+  { label: getStatusLabel('schedule', 'scheduled', '已排期'), value: records.value.filter((item) => item.scheduleStatus === 'scheduled').length },
+  { label: getStatusLabel('delivery', 'live', '投放中'), value: records.value.filter((item) => item.deliveryStatus === 'live').length }
 ])
 
+function getStatusLabel(group: string, value: string, fallback: string) {
+  return locale.t(`status.${group}.${value}`, fallback)
+}
+
 function canEdit(row: AdPlan) {
-  return row.scheduleStatus === 'draft' && row.deliveryStatus !== 'live'
+  return ['draft', 'scheduled'].includes(row.scheduleStatus) && !['live', 'finished'].includes(row.deliveryStatus)
 }
 
 function canStart(row: AdPlan) {
@@ -167,30 +173,30 @@ function resetQuery() {
 
 async function handleSchedule(id: number) {
   await schedulePlan(id)
-  ElMessage.success('计划已提交排期')
+  ElMessage.success(locale.t('page.plans.scheduled'))
   loadPlans()
 }
 
 async function handleStart(id: number) {
   await ElMessageBox.confirm(
-    '启动后系统会自动下发到计划设备：在线设备模拟成功并生成播放日志，离线设备模拟失败并生成工单。确认启动吗？',
-    '启动投放',
+    locale.t('page.plans.startConfirm'),
+    locale.t('page.plans.startConfirmTitle'),
     { type: 'warning' }
   )
   await startPlan(id)
-  ElMessage.success('计划已启动，可到下发记录、数据报表、工单反馈查看联动结果')
+  ElMessage.success(locale.t('page.plans.started'))
   loadPlans()
 }
 
 async function handlePause(id: number) {
   await pausePlan(id)
-  ElMessage.success('计划已暂停')
+  ElMessage.success(locale.t('page.plans.paused'))
   loadPlans()
 }
 
 async function handleFinish(id: number) {
   await finishPlan(id)
-  ElMessage.success('计划已结束')
+  ElMessage.success(locale.t('page.plans.finished'))
   loadPlans()
 }
 

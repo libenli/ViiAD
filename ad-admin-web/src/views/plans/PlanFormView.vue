@@ -1,53 +1,61 @@
 <template>
-  <AppPage eyebrow="广告业务" :title="isEdit ? '编辑投放计划' : '新建投放计划'" :stats="stats">
+  <AppPage :eyebrow="locale.t('page.business')" :title="isEdit ? locale.t('page.plans.editTitle') : locale.t('page.plans.createTitle')" :stats="stats">
     <el-form ref="formRef" class="detail-form" :model="form" :rules="rules" label-width="120px">
-      <el-form-item label="计划名称" prop="planName">
-        <el-input v-model="form.planName" maxlength="80" show-word-limit placeholder="如：华东商圈7月品牌曝光计划" />
+      <el-form-item :label="locale.t('page.plans.name')" prop="planName">
+        <el-input v-model="form.planName" maxlength="80" show-word-limit :placeholder="locale.t('page.plans.keywordPlaceholder')" />
       </el-form-item>
-      <el-form-item label="关联广告" prop="adId">
+      <el-form-item :label="locale.t('page.plans.relatedAdId')" prop="adId">
         <el-select
           v-model="form.adId"
           class="wide-control"
           filterable
           :loading="adLoading"
-          placeholder="请选择已审核通过的广告"
+          :placeholder="locale.t('page.plans.adPlaceholder')"
         >
           <el-option v-for="ad in adOptions" :key="ad.id" :label="getAdLabel(ad)" :value="ad.id">
             <div class="option-row">
               <span>{{ ad.adName }}</span>
-              <small>{{ ad.adCode }} / {{ ad.regionCode || '未配置区域' }}</small>
+              <small>{{ ad.adCode }} / {{ ad.regionCode || locale.t('page.plans.noRegion') }}</small>
             </div>
           </el-option>
         </el-select>
         <p class="field-tip">
-          仅展示审核通过的广告；选择广告后会自动带出投放区域并刷新可选素材。
+          {{ locale.t('page.plans.adTip') }}
         </p>
       </el-form-item>
-      <el-form-item label="投放区域">
-        <el-input v-model="form.regionCode" placeholder="如 华东 / 上海 / 商圈A" />
+      <el-form-item :label="locale.t('page.plans.region')">
+        <el-input v-model="form.regionCode" :placeholder="locale.t('page.plans.regionPlaceholder')" />
       </el-form-item>
-      <el-form-item label="投放时间" required>
+      <el-form-item :label="locale.t('page.plans.time')" required>
         <div class="date-row">
           <el-form-item prop="startTime">
             <el-date-picker
               v-model="form.startTime"
               type="datetime"
               value-format="YYYY-MM-DD HH:mm:ss"
-              placeholder="开始时间"
+              :disabled-date="disablePastDate"
+              :disabled-hours="disabledStartHours"
+              :disabled-minutes="disabledStartMinutes"
+              :disabled-seconds="disabledStartSeconds"
+              :placeholder="locale.t('page.plans.startTime')"
             />
           </el-form-item>
-          <span>至</span>
+          <span>{{ locale.t('page.plans.to') }}</span>
           <el-form-item prop="endTime">
             <el-date-picker
               v-model="form.endTime"
               type="datetime"
               value-format="YYYY-MM-DD HH:mm:ss"
-              placeholder="结束时间"
+              :disabled-date="disableEndDate"
+              :disabled-hours="disabledEndHours"
+              :disabled-minutes="disabledEndMinutes"
+              :disabled-seconds="disabledEndSeconds"
+              :placeholder="locale.t('page.plans.endTime')"
             />
           </el-form-item>
         </div>
       </el-form-item>
-      <el-form-item label="投放素材" prop="materialIds">
+      <el-form-item :label="locale.t('page.plans.materialIds')" prop="materialIds">
         <el-select
           v-model="form.materialIds"
           class="wide-control"
@@ -57,8 +65,8 @@
           collapse-tags-tooltip
           :disabled="!form.adId"
           :loading="materialLoading"
-          :no-data-text="form.adId ? '当前广告暂无已审核素材' : '请先选择广告'"
-          placeholder="请选择当前广告下已审核素材"
+          :no-data-text="form.adId ? locale.t('page.plans.materialNoData') : locale.t('page.plans.chooseAdFirst')"
+          :placeholder="locale.t('page.plans.materialPlaceholder')"
         >
           <el-option
             v-for="material in materialOptions"
@@ -73,10 +81,10 @@
           </el-option>
         </el-select>
         <p class="field-tip">
-          {{ form.adId ? '仅展示当前广告下审核通过的素材。' : '请先选择广告，系统会自动加载该广告下已审核素材。' }}
+          {{ form.adId ? locale.t('page.plans.materialTipReady') : locale.t('page.plans.materialTipEmpty') }}
         </p>
       </el-form-item>
-      <el-form-item label="投放设备" prop="deviceIds">
+      <el-form-item :label="locale.t('page.plans.deviceIds')" prop="deviceIds">
         <el-select
           v-model="form.deviceIds"
           class="wide-control"
@@ -85,28 +93,27 @@
           collapse-tags
           collapse-tags-tooltip
           :loading="deviceLoading"
-          placeholder="请选择启用且正常的设备"
+          :placeholder="locale.t('page.plans.devicePlaceholder')"
         >
           <el-option v-for="device in deviceOptions" :key="device.id" :label="getDeviceLabel(device)" :value="device.id">
             <div class="device-option">
               <span>{{ device.deviceName }}</span>
-              <small>{{ device.deviceCode }} / {{ device.ipAddress || '未配置IP' }}</small>
+              <small>{{ device.deviceCode }} / {{ device.ipAddress || locale.t('page.plans.noIp') }}</small>
             </div>
           </el-option>
         </el-select>
         <p class="field-tip">
-          仅展示启用、非故障设备；如没有候选设备，请先到设备管理中新建设备并恢复为正常状态。
+          {{ locale.t('page.plans.deviceTip') }}
         </p>
       </el-form-item>
-      <el-form-item label="运营人员ID">
+      <el-form-item :label="locale.t('page.plans.operatorId')">
         <el-input-number v-model="form.operatorId" :min="1" controls-position="right" />
       </el-form-item>
       <el-form-item class="form-actions">
-        <el-button @click="router.back()">返回</el-button>
+        <el-button @click="router.back()">{{ locale.t('common.back') }}</el-button>
         <el-button type="primary" :loading="saving" @click="handleSave">
-          {{ saving ? '保存中...' : '保存计划' }}
+          {{ saving ? locale.t('page.plans.saving') : locale.t('page.plans.savePlan') }}
         </el-button>
-        <el-button @click="router.push('/plans')">取消</el-button>
       </el-form-item>
     </el-form>
   </AppPage>
@@ -122,9 +129,11 @@ import { createPlan, fetchPlanDetail, updatePlan, type AdPlanPayload } from '@/a
 import { fetchDevices, type AdDevice } from '@/api/devices'
 import { fetchMaterials, materialTypeOptions, type AdMaterial } from '@/api/materials'
 import { fetchAds, type AdOrder } from '@/api/ads'
+import { useLocaleStore } from '@/stores/locale'
 
 const route = useRoute()
 const router = useRouter()
+const locale = useLocaleStore()
 const formRef = ref<FormInstance>()
 const saving = ref(false)
 const adLoading = ref(false)
@@ -147,31 +156,37 @@ const form = reactive({
 })
 
 const stats = computed(() => [
-  { label: '表单模式', value: isEdit.value ? '编辑' : '新建' },
-  { label: '默认排期', value: '草稿' },
-  { label: '可选广告', value: adOptions.value.length },
-  { label: '可选素材', value: materialOptions.value.length },
-  { label: '可选设备', value: deviceOptions.value.length }
+  { label: locale.t('page.ads.formMode'), value: isEdit.value ? locale.t('page.ads.editMode') : locale.t('page.ads.newMode') },
+  { label: locale.t('page.plans.defaultSchedule'), value: locale.t('status.schedule.draft') },
+  { label: locale.t('page.plans.availableAds'), value: adOptions.value.length },
+  { label: locale.t('page.plans.availableMaterials'), value: materialOptions.value.length },
+  { label: locale.t('page.plans.availableDevices'), value: deviceOptions.value.length }
 ])
 
-const rules: FormRules = {
-  planName: [{ required: true, message: '请输入计划名称', trigger: 'blur' }],
-  adId: [{ required: true, message: '请选择广告', trigger: 'change' }],
-  startTime: [{ required: true, message: '请选择开始时间', trigger: 'change' }],
-  endTime: [{ required: true, message: '请选择结束时间', trigger: 'change' }],
-  materialIds: [{ type: 'array', required: true, message: '请选择投放素材', trigger: 'change' }],
-  deviceIds: [{ type: 'array', required: true, message: '请选择投放设备', trigger: 'change' }]
-}
+const rules = computed<FormRules>(() => ({
+  planName: [{ required: true, message: locale.t('page.plans.planNameRequired'), trigger: 'blur' }],
+  adId: [{ required: true, message: locale.t('page.plans.adRequired'), trigger: 'change' }],
+  startTime: [
+    { required: true, message: locale.t('page.plans.startRequired'), trigger: 'change' },
+    { validator: validateStartTime, trigger: 'change' }
+  ],
+  endTime: [
+    { required: true, message: locale.t('page.plans.endRequired'), trigger: 'change' },
+    { validator: validateEndTime, trigger: 'change' }
+  ],
+  materialIds: [{ type: 'array', required: true, message: locale.t('page.plans.materialsRequired'), trigger: 'change' }],
+  deviceIds: [{ type: 'array', required: true, message: locale.t('page.plans.devicesRequired'), trigger: 'change' }]
+}))
 
 function buildPayload(): AdPlanPayload {
   if (!form.adId) {
-    throw new Error('请先选择广告')
+    throw new Error(locale.t('page.plans.chooseAdFirst'))
   }
   if (!form.materialIds.length) {
-    throw new Error('请至少选择一个投放素材')
+    throw new Error(locale.t('page.plans.chooseOneMaterial'))
   }
   if (!form.deviceIds.length) {
-    throw new Error('请至少选择一台投放设备')
+    throw new Error(locale.t('page.plans.chooseOneDevice'))
   }
   return {
     planName: form.planName,
@@ -185,6 +200,119 @@ function buildPayload(): AdPlanPayload {
   }
 }
 
+function parseDateTime(value?: string) {
+  if (!value) {
+    return undefined
+  }
+  const date = new Date(value.replace(/-/g, '/'))
+  return Number.isNaN(date.getTime()) ? undefined : date
+}
+
+function startOfToday(date = new Date()) {
+  const copy = new Date(date)
+  copy.setHours(0, 0, 0, 0)
+  return copy
+}
+
+function range(end: number, start = 0) {
+  return Array.from({ length: Math.max(end - start, 0) }, (_, index) => index + start)
+}
+
+function isSameDay(left?: Date, right = new Date()) {
+  return Boolean(left && startOfToday(left).getTime() === startOfToday(right).getTime())
+}
+
+function selectedStartDate() {
+  return parseDateTime(form.startTime)
+}
+
+function selectedEndDate() {
+  return parseDateTime(form.endTime)
+}
+
+function currentDateTimeFloor() {
+  const date = new Date()
+  return date
+}
+
+function disablePastDate(date: Date) {
+  return date.getTime() < startOfToday().getTime()
+}
+
+function disableEndDate(date: Date) {
+  const start = selectedStartDate()
+  return start ? date.getTime() < startOfToday(start).getTime() : disablePastDate(date)
+}
+
+function disabledStartHours() {
+  if (isEdit.value || !isSameDay(selectedStartDate())) {
+    return []
+  }
+  return range(currentDateTimeFloor().getHours())
+}
+
+function disabledStartMinutes(hour: number) {
+  const now = currentDateTimeFloor()
+  if (isEdit.value || !isSameDay(selectedStartDate()) || hour !== now.getHours()) {
+    return []
+  }
+  return range(now.getMinutes())
+}
+
+function disabledStartSeconds(hour: number, minute: number) {
+  const now = currentDateTimeFloor()
+  if (isEdit.value || !isSameDay(selectedStartDate()) || hour !== now.getHours() || minute !== now.getMinutes()) {
+    return []
+  }
+  return range(now.getSeconds())
+}
+
+function disabledEndHours() {
+  const start = selectedStartDate()
+  const end = selectedEndDate()
+  if (!start || !isSameDay(end, start)) {
+    return []
+  }
+  return range(start.getHours())
+}
+
+function disabledEndMinutes(hour: number) {
+  const start = selectedStartDate()
+  const end = selectedEndDate()
+  if (!start || !isSameDay(end, start) || hour !== start.getHours()) {
+    return []
+  }
+  return range(start.getMinutes())
+}
+
+function disabledEndSeconds(hour: number, minute: number) {
+  const start = selectedStartDate()
+  const end = selectedEndDate()
+  if (!start || !isSameDay(end, start) || hour !== start.getHours() || minute !== start.getMinutes()) {
+    return []
+  }
+  return range(start.getSeconds() + 1)
+}
+
+function validateStartTime(_rule: unknown, value: string, callback: (error?: Error) => void) {
+  const start = parseDateTime(value)
+  if (!value || isEdit.value) {
+    callback()
+    return
+  }
+  callback(start && start.getTime() < currentDateTimeFloor().getTime() ? new Error(locale.t('page.plans.startNotPast')) : undefined)
+}
+
+function validateEndTime(_rule: unknown, value: string, callback: (error?: Error) => void) {
+  const start = selectedStartDate()
+  const end = parseDateTime(value)
+  if (!start || !end) {
+    callback()
+    return
+  }
+  callback(end.getTime() <= start.getTime() ? new Error(locale.t('page.plans.endAfterStart')) : undefined)
+}
+
 function getAdLabel(ad: AdOrder) {
   return `${ad.adName}（${ad.adCode}）`
 }
@@ -194,7 +322,7 @@ function getMaterialLabel(material: AdMaterial) {
 }
 
 function getMaterialTypeLabel(value: string) {
-  return materialTypeOptions.find((item) => item.value === value)?.label || value
+  return locale.t(`status.materialType.${value}`, materialTypeOptions.find((item) => item.value === value)?.label || value)
 }
 
 function getDeviceLabel(device: AdDevice) {
@@ -276,7 +404,7 @@ async function handleSave() {
     const result = isEdit.value
       ? await updatePlan(Number(route.params.id), payload)
       : await createPlan(payload)
-    ElMessage.success(isEdit.value ? '计划已保存' : '计划已创建')
+    ElMessage.success(isEdit.value ? locale.t('page.plans.saved') : locale.t('page.plans.created'))
     router.push(`/plans/${result.data.id}`)
   } catch (error) {
     if (error instanceof Error) {
@@ -304,6 +432,16 @@ watch(
       form.regionCode = selectedAd.regionCode || ''
     }
     await loadApprovedMaterials(adId)
+  }
+)
+
+watch(
+  () => form.startTime,
+  () => {
+    if (form.endTime && selectedStartDate() && selectedEndDate() && selectedEndDate()!.getTime() <= selectedStartDate()!.getTime()) {
+      form.endTime = ''
+    }
+    formRef.value?.validateField('endTime')
   }
 )
 </script>

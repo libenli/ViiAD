@@ -1,13 +1,18 @@
 package com.mrd.ad.business.partner.dto;
 
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Email;
+import javax.validation.constraints.Pattern;
 
 public class AgentCreateRequest {
 
     @NotBlank(message = "代理商名称不能为空")
     private String agentName;
     private String contactName;
+    @Pattern(regexp = "^$|^\\+?[0-9][0-9\\s-]{5,19}$", message = "联系电话格式不正确")
     private String contactPhone;
+
+    @Email(message = "联系邮箱格式不正确")
     private String contactEmail;
     private Long ownerUserId;
     private String remark;

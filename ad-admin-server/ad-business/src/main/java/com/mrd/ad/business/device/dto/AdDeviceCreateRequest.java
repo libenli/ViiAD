@@ -4,6 +4,10 @@ import javax.validation.constraints.NotBlank;
 
 public class AdDeviceCreateRequest {
 
+    /** ViiTalk大屏账号mzNumber，入库到ad_device.device_code。 */
+    @NotBlank(message = "大屏账号不能为空")
+    private String deviceCode;
+
     @NotBlank(message = "设备名称不能为空")
     private String deviceName;
 
@@ -13,6 +17,14 @@ public class AdDeviceCreateRequest {
     private String resolution;
     private String ipAddress;
     private String macAddress;
+
+    public String getDeviceCode() {
+        return deviceCode;
+    }
+
+    public void setDeviceCode(String deviceCode) {
+        this.deviceCode = deviceCode;
+    }
 
     public String getDeviceName() {
         return deviceName;

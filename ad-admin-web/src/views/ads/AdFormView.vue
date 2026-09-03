@@ -1,21 +1,27 @@
 <template>
-  <AppPage eyebrow="广告业务" :title="isEdit ? '编辑广告' : '新建广告'" :stats="stats">
+  <AppPage :eyebrow="locale.t('page.business')" :title="isEdit ? locale.t('page.ads.editTitle') : locale.t('page.ads.createTitle')" :stats="stats">
     <el-form ref="formRef" class="entity-form" :model="form" :rules="rules" label-width="110px">
-      <el-form-item label="广告名称" prop="adName">
-        <el-input v-model="form.adName" maxlength="80" show-word-limit placeholder="请输入广告名称" />
+      <el-form-item :label="locale.t('page.ads.name')" prop="adName">
+        <el-input
+          v-model="form.adName"
+          maxlength="80"
+          show-word-limit
+          :placeholder="locale.t('page.ads.adNameRequired')"
+          @input="form.adName = sanitizeBusinessText(form.adName)"
+        />
       </el-form-item>
-      <el-form-item label="广告主" prop="advertiserId">
-        <el-select v-model="form.advertiserId" filterable :loading="partnerLoading" placeholder="请选择启用广告主">
+      <el-form-item :label="locale.t('page.ads.advertiser')" prop="advertiserId">
+        <el-select v-model="form.advertiserId" filterable :loading="partnerLoading" :placeholder="locale.t('page.ads.advertiserPlaceholder')">
           <el-option v-for="item in advertisers" :key="item.id" :label="getAdvertiserLabel(item)" :value="item.id">
             <div class="partner-option">
               <span>{{ item.advertiserName }}</span>
-              <small>{{ item.advertiserCode }} / {{ item.companyName || '未配置公司' }}</small>
+              <small>{{ item.advertiserCode }} / {{ item.companyName || locale.t('page.ads.noCompany') }}</small>
             </div>
           </el-option>
         </el-select>
       </el-form-item>
-      <el-form-item label="代理商">
-        <el-select v-model="form.agentId" clearable filterable :loading="partnerLoading" placeholder="请选择代理商（可选）">
+      <el-form-item :label="locale.t('page.ads.agent')">
+        <el-select v-model="form.agentId" clearable filterable :loading="partnerLoading" :placeholder="locale.t('page.ads.agentPlaceholder')">
           <el-option v-for="item in agents" :key="item.id" :label="getAgentLabel(item)" :value="item.id">
             <div class="partner-option">
               <span>{{ item.agentName }}</span>
@@ -24,29 +30,43 @@
           </el-option>
         </el-select>
       </el-form-item>
-      <el-form-item label="广告类型" prop="adType">
-        <el-select v-model="form.adType" placeholder="请选择广告类型">
-          <el-option v-for="item in adTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+      <el-form-item :label="locale.t('page.ads.type')" prop="adType">
+        <el-select v-model="form.adType" :placeholder="locale.t('page.ads.adTypeRequired')">
+          <el-option v-for="item in adTypeOptions" :key="item.value" :label="getAdTypeLabel(item.value)" :value="item.value" />
         </el-select>
       </el-form-item>
-      <el-form-item label="投放目标">
-        <el-select v-model="form.objective" clearable placeholder="请选择投放目标">
-          <el-option v-for="item in objectiveOptions" :key="item.value" :label="item.label" :value="item.value" />
+      <el-form-item :label="locale.t('page.ads.objective')">
+        <el-select v-model="form.objective" clearable :placeholder="locale.t('page.ads.objectivePlaceholder')">
+          <el-option v-for="item in objectiveOptions" :key="item.value" :label="getObjectiveLabel(item.value, item.label)" :value="item.value" />
         </el-select>
       </el-form-item>
-      <el-form-item label="投放区域">
-        <el-input v-model="form.regionCode" placeholder="如 华东 / 上海" />
+      <el-form-item :label="locale.t('page.ads.region')" prop="regionCode">
+        <el-cascader
+          v-model="form.regionCode"
+          :options="chinaRegionOptions"
+          :props="regionProps"
+          clearable
+          filterable
+          :placeholder="locale.t('page.ads.regionPlaceholder')"
+        />
       </el-form-item>
-      <el-form-item label="预算金额">
+      <el-form-item :label="locale.t('page.ads.budget')">
         <el-input-number v-model="form.budgetAmount" :min="0" :precision="2" controls-position="right" />
       </el-form-item>
-      <el-form-item label="广告说明">
-        <el-input v-model="form.description" type="textarea" :rows="5" maxlength="500" show-word-limit />
+      <el-form-item :label="locale.t('page.ads.description')">
+        <el-input
+          v-model="form.description"
+          type="textarea"
+          :rows="5"
+          maxlength="500"
+          show-word-limit
+          @input="form.description = sanitizeBusinessText(form.description)"
+        />
       </el-form-item>
       <el-form-item class="form-actions">
-        <el-button @click="router.back()">返回</el-button>
+        <el-button @click="router.back()">{{ locale.t('common.back') }}</el-button>
         <el-button type="primary" :loading="saving" @click="handleSave">
-          保存
+          {{ locale.t('common.save') }}
         </el-button>
       </el-form-item>
     </el-form>
@@ -60,14 +80,19 @@ import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import AppPage from '@/components/AppPage.vue'
 import { adTypeOptions, createAd, fetchAdDetail, objectiveOptions, updateAd, type AdOrderPayload } from '@/api/ads'
 import { fetchAdvertisers, fetchAgents, type Advertiser, type Agent } from '@/api/partners'
+import { chinaRegionOptions } from '@/config/regions'
+import { useLocaleStore } from '@/stores/locale'
+import { sanitizeBusinessText } from '@/utils/text'
 
 const route = useRoute()
 const router = useRouter()
+const locale = useLocaleStore()
 const formRef = ref<FormInstance>()
 const saving = ref(false)
 const partnerLoading = ref(false)
 const advertisers = ref<Advertiser[]>([])
 const agents = ref<Agent[]>([])
+const regionProps = { checkStrictly: true, emitPath: false }
 
 const id = computed(() => Number(route.params.id))
 const isEdit = computed(() => Boolean(route.params.id))
@@ -83,18 +108,27 @@ const form = reactive<AdOrderPayload>({
   description: ''
 })
 
-const rules: FormRules = {
-  adName: [{ required: true, message: '请输入广告名称', trigger: 'blur' }],
-  advertiserId: [{ required: true, message: '请选择广告主', trigger: 'change' }],
-  adType: [{ required: true, message: '请选择广告类型', trigger: 'change' }]
-}
+const rules = computed<FormRules>(() => ({
+  adName: [{ required: true, message: locale.t('page.ads.adNameRequired'), trigger: 'blur' }],
+  advertiserId: [{ required: true, message: locale.t('page.ads.advertiserRequired'), trigger: 'change' }],
+  adType: [{ required: true, message: locale.t('page.ads.adTypeRequired'), trigger: 'change' }],
+  regionCode: [{ required: true, message: locale.t('page.ads.regionRequired'), trigger: 'change' }]
+}))
 
 const stats = computed(() => [
-  { label: '表单模式', value: isEdit.value ? '编辑' : '新建' },
-  { label: '默认状态', value: '草稿' },
-  { label: '主流程', value: '广告' },
-  { label: '下一步', value: '素材' }
+  { label: locale.t('page.ads.formMode'), value: isEdit.value ? locale.t('page.ads.editMode') : locale.t('page.ads.newMode') },
+  { label: locale.t('page.ads.defaultStatus'), value: locale.t('status.ad.draft') },
+  { label: locale.t('page.ads.mainFlow'), value: locale.t('menu.ads') },
+  { label: locale.t('page.ads.nextStep'), value: locale.t('page.ads.materialStep') }
 ])
+
+function getAdTypeLabel(value: string) {
+  return locale.t(`status.adType.${value}`, adTypeOptions.find((item) => item.value === value)?.label || value)
+}
+
+function getObjectiveLabel(value: string, fallback: string) {
+  return locale.t(`status.objective.${value}`, fallback)
+}
 
 async function loadDetail() {
   if (!isEdit.value) return
@@ -138,7 +172,7 @@ async function handleSave() {
   saving.value = true
   try {
     const result = isEdit.value ? await updateAd(id.value, form) : await createAd(form)
-    ElMessage.success(isEdit.value ? '广告已更新' : '广告已创建')
+    ElMessage.success(isEdit.value ? locale.t('page.ads.updated') : locale.t('page.ads.created'))
     router.replace(`/ads/${result.data.id}`)
   } finally {
     saving.value = false

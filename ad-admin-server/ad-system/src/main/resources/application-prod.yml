@@ -16,6 +16,27 @@ logging:
     com.mrd.ad: warn
 
 mrd:
+  auth:
+    verification-code:
+      mock-send: ${MRD_AUTH_CODE_MOCK_SEND:false}
+    sms:
+      access-key-id: ${MRD_SMS_ACCESS_KEY_ID:}
+      access-key-secret: ${MRD_SMS_ACCESS_KEY_SECRET:}
+      sign-name: ${MRD_SMS_SIGN_NAME:}
+      region-id: ${MRD_SMS_REGION_ID:cn-hangzhou}
+      template-code:
+        zh: ${MRD_SMS_TEMPLATE_ZH:}
+        en: ${MRD_SMS_TEMPLATE_EN:}
+        overseas: ${MRD_SMS_TEMPLATE_OVERSEAS:}
+    email:
+      host: ${MRD_EMAIL_HOST:}
+      port: ${MRD_EMAIL_PORT:465}
+      username: ${MRD_EMAIL_USERNAME:}
+      password: ${MRD_EMAIL_PASSWORD:}
+      from: ${MRD_EMAIL_FROM:}
+      from-name: ${MRD_EMAIL_FROM_NAME:ViiAD}
+      ssl: ${MRD_EMAIL_SSL:true}
+      starttls: ${MRD_EMAIL_STARTTLS:false}
   upload:
     provider: ${MRD_UPLOAD_PROVIDER:oss}
     base-path: ${MRD_UPLOAD_BASE_PATH:materials/prod}

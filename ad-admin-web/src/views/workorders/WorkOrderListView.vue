@@ -1,67 +1,68 @@
 <template>
-  <AppPage eyebrow="服务闭环" title="工单反馈" :stats="stats">
+  <AppPage :eyebrow="locale.t('page.workorders.serviceLoop')" :title="locale.t('page.workorders.title')" :stats="stats">
     <template #actions>
-      <el-button v-if="user.hasPermission('workOrder:operate')" type="primary" :icon="Plus" @click="dialogVisible = true">新建工单</el-button>
+      <el-button v-if="user.hasPermission('workOrder:operate')" type="primary" :icon="Plus" @click="dialogVisible = true">{{ locale.t('page.workorders.create') }}</el-button>
     </template>
 
     <el-form class="filter-form" :model="query" inline>
-      <el-form-item label="关键词">
-        <el-input v-model="query.keyword" clearable placeholder="工单标题 / 编号" />
+      <el-form-item :label="locale.t('page.workorders.keyword')">
+        <el-input v-model="query.keyword" clearable :placeholder="locale.t('page.workorders.keywordPlaceholder')" />
       </el-form-item>
-      <el-form-item label="来源">
-        <el-select v-model="query.sourceType" clearable placeholder="全部来源" style="width: 140px">
-          <el-option v-for="(label, key) in workOrderSourceMap" :key="key" :label="label" :value="key" />
+      <el-form-item :label="locale.t('page.workorders.source')">
+        <el-select v-model="query.sourceType" clearable :placeholder="locale.t('page.workorders.allSources')" style="width: 140px">
+          <el-option v-for="(label, key) in workOrderSourceMap" :key="key" :label="getStringStatusLabel('workOrderSource', String(key), label)" :value="key" />
         </el-select>
       </el-form-item>
-      <el-form-item label="优先级">
-        <el-select v-model="query.priority" clearable placeholder="全部优先级" style="width: 140px">
-          <el-option v-for="(item, key) in workOrderPriorityMap" :key="key" :label="item.label" :value="key" />
+      <el-form-item :label="locale.t('page.workorders.priority')">
+        <el-select v-model="query.priority" clearable :placeholder="locale.t('page.workorders.allPriorities')" style="width: 140px">
+          <el-option v-for="(item, key) in workOrderPriorityMap" :key="key" :label="getStatusLabel('workOrderPriority', String(key), item.label)" :value="key" />
         </el-select>
       </el-form-item>
-      <el-form-item label="状态">
-        <el-select v-model="query.status" clearable placeholder="全部状态" style="width: 140px">
-          <el-option v-for="(item, key) in workOrderStatusMap" :key="key" :label="item.label" :value="key" />
+      <el-form-item :label="locale.t('page.workorders.status')">
+        <el-select v-model="query.status" clearable :placeholder="locale.t('page.workorders.allStatus')" style="width: 140px">
+          <el-option v-for="(item, key) in workOrderStatusMap" :key="key" :label="getStatusLabel('workOrder', String(key), item.label)" :value="key" />
         </el-select>
       </el-form-item>
       <el-form-item>
-        <el-button type="primary" :icon="Search" @click="loadOrders">查询</el-button>
-        <el-button :icon="Refresh" @click="resetQuery">重置</el-button>
+        <el-button type="primary" :icon="Search" @click="loadOrders">{{ locale.t('common.search') }}</el-button>
+        <el-button :icon="Refresh" @click="resetQuery">{{ locale.t('common.reset') }}</el-button>
       </el-form-item>
     </el-form>
 
     <el-table v-loading="loading" :data="records" class="data-table" row-key="id">
-      <el-table-column prop="workNo" label="工单编号" min-width="180" />
-      <el-table-column prop="title" label="标题" min-width="220" show-overflow-tooltip />
-      <el-table-column label="来源" width="110">
-        <template #default="{ row }">{{ workOrderSourceMap[row.sourceType] || row.sourceType }}</template>
+      <el-table-column prop="workNo" :label="locale.t('page.workorders.workNo')" min-width="180" />
+      <el-table-column prop="title" :label="locale.t('page.workorders.workTitle')" min-width="220" show-overflow-tooltip />
+      <el-table-column :label="locale.t('page.workorders.source')" width="110">
+        <template #default="{ row }">{{ getStringStatusLabel('workOrderSource', row.sourceType, workOrderSourceMap[row.sourceType] || row.sourceType) }}</template>
       </el-table-column>
-      <el-table-column label="优先级" width="100">
+      <el-table-column :label="locale.t('page.workorders.priority')" width="100">
         <template #default="{ row }">
           <el-tag :type="workOrderPriorityMap[row.priority]?.type || 'info'" effect="dark">
-            {{ workOrderPriorityMap[row.priority]?.label || row.priority }}
+            {{ getStatusLabel('workOrderPriority', row.priority, workOrderPriorityMap[row.priority]?.label || row.priority) }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="状态" width="110">
+      <el-table-column :label="locale.t('page.workorders.status')" width="110">
         <template #default="{ row }">
           <el-tag :type="workOrderStatusMap[row.status]?.type || 'info'" effect="dark">
-            {{ workOrderStatusMap[row.status]?.label || row.status }}
+            {{ getStatusLabel('workOrder', row.status, workOrderStatusMap[row.status]?.label || row.status) }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="assigneeId" label="处理人ID" width="110" />
-      <el-table-column prop="relatedPlanId" label="关联计划" width="110" />
-      <el-table-column prop="createTime" label="创建时间" min-width="170" />
-      <el-table-column label="操作" min-width="260" class-name="operation-column">
+      <el-table-column prop="assigneeId" :label="locale.t('page.workorders.assigneeId')" width="110" />
+      <el-table-column prop="relatedPlanId" :label="locale.t('page.workorders.relatedPlan')" width="110" />
+      <el-table-column prop="createTime" :label="locale.t('page.workorders.createTime')" min-width="170" />
+      <el-table-column :label="locale.t('common.operation')" width="205" fixed="right" class-name="operation-column">
         <template #default="{ row }">
-          <el-button link type="primary" @click="openDetail(row)">详情</el-button>
-          <el-button v-if="user.hasPermission('workOrder:operate') && row.status === 'open'" link type="primary" @click="handleAssign(row.id)">分派</el-button>
-          <el-button v-if="user.hasPermission('workOrder:operate') && (row.status === 'assigned' || row.status === 'open')" link type="warning" @click="handleStart(row.id)">处理</el-button>
-          <el-button v-if="user.hasPermission('workOrder:operate') && row.status !== 'closed'" link type="success" @click="handleClose(row.id)">关闭</el-button>
+          <el-button link type="primary" @click="openDetail(row)">{{ locale.t('common.detail') }}</el-button>
+          <el-button v-if="user.hasPermission('workOrder:operate') && row.status === 'open'" link type="primary" @click="openAssign(row)">{{ locale.t('page.workorders.assign') }}</el-button>
+          <el-button v-if="user.hasPermission('workOrder:operate') && (row.status === 'assigned' || row.status === 'open')" link type="warning" @click="handleStart(row.id)">{{ locale.t('page.workorders.start') }}</el-button>
+          <el-button v-if="user.hasPermission('workOrder:operate') && row.status !== 'closed'" link type="success" @click="handleClose(row.id)">{{ locale.t('page.workorders.close') }}</el-button>
+          <el-button v-if="user.hasPermission('workOrder:operate') && row.status === 'closed'" link type="success" @click="handleReopen(row.id)">{{ locale.t('page.workorders.reopen') }}</el-button>
         </template>
       </el-table-column>
       <template #empty>
-        <el-empty description="暂无工单，下发失败会自动生成系统工单，也可以手动创建" />
+        <el-empty :description="locale.t('page.workorders.empty')" />
       </template>
     </el-table>
 
@@ -77,43 +78,61 @@
       />
     </div>
 
-    <el-drawer v-model="drawerVisible" title="工单详情" size="460px">
+    <el-drawer v-model="drawerVisible" :title="locale.t('page.workorders.drawerTitle')" size="460px">
       <el-descriptions v-if="current" :column="1" border>
-        <el-descriptions-item label="工单编号">{{ current.workNo }}</el-descriptions-item>
-        <el-descriptions-item label="标题">{{ current.title }}</el-descriptions-item>
-        <el-descriptions-item label="来源">{{ workOrderSourceMap[current.sourceType] || current.sourceType }}</el-descriptions-item>
-        <el-descriptions-item label="优先级">{{ workOrderPriorityMap[current.priority]?.label || current.priority }}</el-descriptions-item>
-        <el-descriptions-item label="状态">{{ workOrderStatusMap[current.status]?.label || current.status }}</el-descriptions-item>
-        <el-descriptions-item label="处理人ID">{{ current.assigneeId || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="关联计划">{{ current.relatedPlanId || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="内容">{{ current.content || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="关闭时间">{{ current.closeTime || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.workorders.workNo')">{{ current.workNo }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.workorders.workTitle')">{{ current.title }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.workorders.source')">{{ getStringStatusLabel('workOrderSource', current.sourceType, workOrderSourceMap[current.sourceType] || current.sourceType) }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.workorders.priority')">{{ getStatusLabel('workOrderPriority', current.priority, workOrderPriorityMap[current.priority]?.label || current.priority) }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.workorders.status')">{{ getStatusLabel('workOrder', current.status, workOrderStatusMap[current.status]?.label || current.status) }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.workorders.assigneeId')">{{ current.assigneeId || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.workorders.relatedPlan')">{{ current.relatedPlanId || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.workorders.content')">{{ current.content || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.workorders.closeTime')">{{ current.closeTime || '-' }}</el-descriptions-item>
       </el-descriptions>
     </el-drawer>
 
-    <el-dialog v-model="dialogVisible" title="新建工单" width="560px">
+    <el-dialog v-model="dialogVisible" :title="locale.t('page.workorders.create')" width="560px">
       <el-form :model="form" label-width="100px">
-        <el-form-item label="标题" required>
-          <el-input v-model="form.title" placeholder="请输入工单标题" />
+        <el-form-item :label="locale.t('page.workorders.workTitle')" required>
+          <el-input v-model="form.title" :placeholder="locale.t('page.workorders.titlePlaceholder')" />
         </el-form-item>
-        <el-form-item label="优先级">
+        <el-form-item :label="locale.t('page.workorders.priority')">
           <el-select v-model="form.priority" class="wide-control">
-            <el-option v-for="(item, key) in workOrderPriorityMap" :key="key" :label="item.label" :value="key" />
+            <el-option v-for="(item, key) in workOrderPriorityMap" :key="key" :label="getStatusLabel('workOrderPriority', String(key), item.label)" :value="key" />
           </el-select>
         </el-form-item>
-        <el-form-item label="处理人ID">
-          <el-input-number v-model="form.assigneeId" :min="1" controls-position="right" />
+        <el-form-item :label="locale.t('page.workorders.assigneeId')">
+          <el-select v-model="form.assigneeId" class="wide-control" clearable filterable :loading="userLoading" :placeholder="locale.t('page.workorders.assigneePlaceholder')">
+            <el-option v-for="item in assigneeOptions" :key="item.id" :label="getUserLabel(item)" :value="item.id" />
+          </el-select>
         </el-form-item>
-        <el-form-item label="关联计划">
-          <el-input-number v-model="form.relatedPlanId" :min="1" controls-position="right" />
+        <el-form-item :label="locale.t('page.workorders.relatedPlan')">
+          <el-select v-model="form.relatedPlanId" class="wide-control" clearable filterable :loading="planLoading" :placeholder="locale.t('page.workorders.planPlaceholder')">
+            <el-option v-for="plan in planOptions" :key="plan.id" :label="getPlanLabel(plan)" :value="plan.id" />
+          </el-select>
         </el-form-item>
-        <el-form-item label="内容">
-          <el-input v-model="form.content" type="textarea" :rows="4" placeholder="请输入问题描述或处理要求" />
+        <el-form-item :label="locale.t('page.workorders.content')">
+          <el-input v-model="form.content" type="textarea" :rows="4" :placeholder="locale.t('page.workorders.contentPlaceholder')" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button v-if="user.hasPermission('workOrder:operate')" type="primary" :loading="saving" @click="handleCreate">保存</el-button>
+        <el-button @click="dialogVisible = false">{{ locale.t('common.cancel') }}</el-button>
+        <el-button v-if="user.hasPermission('workOrder:operate')" type="primary" :loading="saving" @click="handleCreate">{{ locale.t('common.save') }}</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="assignDialogVisible" :title="locale.t('page.workorders.assignTitle')" width="460px">
+      <el-form label-width="100px">
+        <el-form-item :label="locale.t('page.workorders.assigneeId')" required>
+          <el-select v-model="assignForm.assigneeId" class="wide-control" filterable :loading="userLoading" :placeholder="locale.t('page.workorders.assigneePlaceholder')">
+            <el-option v-for="item in assigneeOptions" :key="item.id" :label="getUserLabel(item)" :value="item.id" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="assignDialogVisible = false">{{ locale.t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="assigning" @click="handleAssign">{{ locale.t('common.confirm') }}</el-button>
       </template>
     </el-dialog>
   </AppPage>
@@ -124,27 +143,38 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh, Search } from '@element-plus/icons-vue'
 import AppPage from '@/components/AppPage.vue'
+import { useLocaleStore } from '@/stores/locale'
 import { useUserStore } from '@/stores/user'
 import {
   assignWorkOrder,
   closeWorkOrder,
   createWorkOrder,
   fetchWorkOrders,
+  reopenWorkOrder,
   startWorkOrder,
   workOrderPriorityMap,
   workOrderSourceMap,
   workOrderStatusMap,
   type WorkOrder
 } from '@/api/workorders'
+import { fetchPlans, type AdPlan } from '@/api/plans'
+import { fetchSystemUsers, type SysUser } from '@/api/system'
 
 const loading = ref(false)
+const locale = useLocaleStore()
 const user = useUserStore()
 const saving = ref(false)
 const drawerVisible = ref(false)
 const dialogVisible = ref(false)
+const assignDialogVisible = ref(false)
+const assigning = ref(false)
 const records = ref<WorkOrder[]>([])
 const current = ref<WorkOrder>()
 const total = ref(0)
+const userLoading = ref(false)
+const planLoading = ref(false)
+const assigneeOptions = ref<SysUser[]>([])
+const planOptions = ref<AdPlan[]>([])
 
 const query = reactive({
   keyword: '',
@@ -163,12 +193,33 @@ const form = reactive({
   relatedPlanId: undefined as number | undefined
 })
 
+const assignForm = reactive({
+  id: undefined as number | undefined,
+  assigneeId: undefined as number | undefined
+})
+
 const stats = computed(() => [
-  { label: '待处理', value: records.value.filter((item) => item.status === 'open').length },
-  { label: '处理中', value: records.value.filter((item) => item.status === 'processing').length },
-  { label: '已关闭', value: records.value.filter((item) => item.status === 'closed').length },
-  { label: '高优先级', value: records.value.filter((item) => item.priority === 'high').length }
+  { label: getStatusLabel('workOrder', 'open', '待处理'), value: records.value.filter((item) => item.status === 'open').length },
+  { label: getStatusLabel('workOrder', 'processing', '处理中'), value: records.value.filter((item) => item.status === 'processing').length },
+  { label: getStatusLabel('workOrder', 'closed', '已关闭'), value: records.value.filter((item) => item.status === 'closed').length },
+  { label: locale.t('page.workorders.highPriority'), value: records.value.filter((item) => item.priority === 'high').length }
 ])
+
+function getStatusLabel(group: string, value: string, fallback: string) {
+  return locale.t(`status.${group}.${value}`, fallback)
+}
+
+function getStringStatusLabel(group: string, value: string, fallback: string) {
+  return locale.t(`status.${group}.${value}`, fallback)
+}
+
+function getUserLabel(item: SysUser) {
+  return `${item.realName}（${item.username}）`
+}
+
+function getPlanLabel(plan: AdPlan) {
+  return `${plan.planName}（${plan.planCode}）`
+}
 
 async function loadOrders() {
   loading.value = true
@@ -178,6 +229,26 @@ async function loadOrders() {
     total.value = result.data.total
   } finally {
     loading.value = false
+  }
+}
+
+async function loadAssignees() {
+  userLoading.value = true
+  try {
+    const result = await fetchSystemUsers({ status: 'active', userType: 'platform', page: 1, size: 200 })
+    assigneeOptions.value = result.data.records
+  } finally {
+    userLoading.value = false
+  }
+}
+
+async function loadPlans() {
+  planLoading.value = true
+  try {
+    const result = await fetchPlans({ page: 1, size: 200 })
+    planOptions.value = result.data.records
+  } finally {
+    planLoading.value = false
   }
 }
 
@@ -195,15 +266,21 @@ function openDetail(row: WorkOrder) {
   drawerVisible.value = true
 }
 
+function openAssign(row: WorkOrder) {
+  assignForm.id = row.id
+  assignForm.assigneeId = row.assigneeId
+  assignDialogVisible.value = true
+}
+
 async function handleCreate() {
   if (!form.title) {
-    ElMessage.warning('请输入工单标题')
+    ElMessage.warning(locale.t('page.workorders.titleRequired'))
     return
   }
   saving.value = true
   try {
     await createWorkOrder(form)
-    ElMessage.success('工单已创建')
+    ElMessage.success(locale.t('page.workorders.created'))
     dialogVisible.value = false
     Object.assign(form, { title: '', content: '', priority: 'normal', assigneeId: undefined, relatedPlanId: undefined })
     loadOrders()
@@ -212,32 +289,49 @@ async function handleCreate() {
   }
 }
 
-async function handleAssign(id: number) {
-  const result = await ElMessageBox.prompt('请输入处理人ID', '分派工单', {
-    inputPattern: /^[1-9]\d*$/,
-    inputErrorMessage: '请输入有效处理人ID'
-  })
-  await assignWorkOrder(id, Number(result.value))
-  ElMessage.success('工单已分派')
-  loadOrders()
+async function handleAssign() {
+  if (!assignForm.id || !assignForm.assigneeId) {
+    ElMessage.warning(locale.t('page.workorders.assigneeError'))
+    return
+  }
+  assigning.value = true
+  try {
+    await assignWorkOrder(assignForm.id, assignForm.assigneeId)
+    ElMessage.success(locale.t('page.workorders.assigned'))
+    assignDialogVisible.value = false
+    loadOrders()
+  } finally {
+    assigning.value = false
+  }
 }
 
 async function handleStart(id: number) {
   await startWorkOrder(id)
-  ElMessage.success('工单已进入处理中')
+  ElMessage.success(locale.t('page.workorders.started'))
   loadOrders()
 }
 
 async function handleClose(id: number) {
-  const result = await ElMessageBox.prompt('请输入处理结果', '关闭工单', {
-    inputPlaceholder: '如：已重启终端并恢复下发'
+  const result = await ElMessageBox.prompt(locale.t('page.workorders.closePrompt'), locale.t('page.workorders.closeTitle'), {
+    inputPlaceholder: locale.t('page.workorders.closePlaceholder')
   })
   await closeWorkOrder(id, result.value)
-  ElMessage.success('工单已关闭')
+  ElMessage.success(locale.t('page.workorders.closed'))
   loadOrders()
 }
 
-onMounted(loadOrders)
+async function handleReopen(id: number) {
+  await ElMessageBox.confirm(locale.t('page.workorders.reopenConfirm'), locale.t('page.workorders.reopenTitle'), { type: 'warning' })
+  await reopenWorkOrder(id)
+  ElMessage.success(locale.t('page.workorders.reopened'))
+  loadOrders()
+}
+
+onMounted(() => {
+  loadOrders()
+  loadAssignees()
+  loadPlans()
+})
 </script>
 
 <style scoped>

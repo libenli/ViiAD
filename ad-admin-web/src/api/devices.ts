@@ -11,6 +11,9 @@ export interface AdDevice {
   screenSize?: string
   resolution?: string
   ipAddress?: string
+  provinceName?: string
+  cityName?: string
+  regionName?: string
   macAddress?: string
   onlineStatus: string
   faultStatus: string
@@ -33,6 +36,7 @@ export interface AdDeviceQuery {
 }
 
 export interface AdDevicePayload {
+  deviceCode: string
   deviceName: string
   buildingId?: number
   floorNo?: string

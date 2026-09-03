@@ -132,6 +132,7 @@ CREATE TABLE IF NOT EXISTS ad_advertiser (
   owner_user_id BIGINT DEFAULT NULL COMMENT '绑定用户ID',
   status VARCHAR(30) DEFAULT 'active' COMMENT '状态',
   source_type VARCHAR(30) DEFAULT 'platform' COMMENT '来源',
+  agent_id BIGINT DEFAULT NULL COMMENT '来源代理商ID',
   remark VARCHAR(500) DEFAULT NULL COMMENT '备注',
   create_by BIGINT DEFAULT NULL COMMENT '创建人',
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -141,6 +142,7 @@ CREATE TABLE IF NOT EXISTS ad_advertiser (
   PRIMARY KEY (id),
   UNIQUE KEY uk_ad_advertiser_code (advertiser_code),
   KEY idx_ad_advertiser_owner (owner_user_id),
+  KEY idx_ad_advertiser_agent (agent_id),
   KEY idx_ad_advertiser_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='广告主表';
 
@@ -413,6 +415,8 @@ CREATE TABLE IF NOT EXISTS ad_bill (
   status VARCHAR(30) DEFAULT 'pending' COMMENT '状态',
   confirm_time DATETIME DEFAULT NULL COMMENT '确认时间',
   pay_time DATETIME DEFAULT NULL COMMENT '支付时间',
+  payment_voucher_no VARCHAR(100) DEFAULT NULL COMMENT '银行汇款单号',
+  payment_voucher_url VARCHAR(500) DEFAULT NULL COMMENT '付款截图地址',
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
@@ -587,10 +591,10 @@ INSERT IGNORE INTO ad_agent (id, agent_code, agent_name, contact_name, contact_p
 VALUES
 (1, 'AGT-DEMO-001', '星河传媒代理商', '赵经理', '13800000009', 'agent01@example.com', 9, 'active', '演示代理商');
 
-INSERT IGNORE INTO ad_advertiser (id, advertiser_code, advertiser_name, company_name, contact_name, contact_phone, contact_email, owner_user_id, status, source_type, remark)
+INSERT IGNORE INTO ad_advertiser (id, advertiser_code, advertiser_name, company_name, contact_name, contact_phone, contact_email, owner_user_id, status, source_type, agent_id, remark)
 VALUES
-(1, 'ADV-DEMO-001', '蓝海汽车广告主', '蓝海汽车有限公司', '李经理', '13800000010', 'advertiser01@example.com', 10, 'active', 'platform', '演示广告主'),
-(2, 'ADV-DEMO-002', '城市生活广告主', '城市生活服务有限公司', '王经理', '13800000011', 'city@example.com', NULL, 'active', 'platform', '演示广告主');
+(1, 'ADV-DEMO-001', '蓝海汽车广告主', '蓝海汽车有限公司', '李经理', '13800000010', 'advertiser01@example.com', 10, 'active', 'platform', NULL, '演示广告主'),
+(2, 'ADV-DEMO-002', '城市生活广告主', '城市生活服务有限公司', '王经理', '13800000011', 'city@example.com', NULL, 'active', 'platform', NULL, '演示广告主');
 
 INSERT IGNORE INTO ad_building (id, building_code, building_name, region_code, address, longitude, latitude, status)
 VALUES

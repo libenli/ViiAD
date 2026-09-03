@@ -14,6 +14,8 @@ export interface AdBill {
   status: string
   confirmTime?: string
   payTime?: string
+  paymentVoucherNo?: string
+  paymentVoucherUrl?: string
   createTime?: string
   updateTime?: string
 }
@@ -54,6 +56,11 @@ export function confirmBill(id: number) {
   return request.post(`/bills/${id}/confirm`) as Promise<ApiResponse<AdBill>>
 }
 
-export function payBill(id: number) {
-  return request.post(`/bills/${id}/pay`) as Promise<ApiResponse<AdBill>>
+export interface PayBillPayload {
+  paymentVoucherNo: string
+  paymentVoucherUrl: string
+}
+
+export function payBill(id: number, data: PayBillPayload) {
+  return request.post(`/bills/${id}/pay`, data) as Promise<ApiResponse<AdBill>>
 }

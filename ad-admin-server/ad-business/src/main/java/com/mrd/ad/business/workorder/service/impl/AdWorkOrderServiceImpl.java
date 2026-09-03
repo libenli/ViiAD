@@ -156,6 +156,20 @@ public class AdWorkOrderServiceImpl implements AdWorkOrderService {
         return order;
     }
 
+    @Override
+    public AdWorkOrder reopen(Long id) {
+        AdWorkOrder order = getDetail(id);
+        if (!"closed".equals(order.getStatus())) {
+            throw new BusinessException("只有已关闭工单可以恢复");
+        }
+        order.setStatus(order.getAssigneeId() == null ? "open" : "assigned");
+        order.setCloseTime(null);
+        order.setUpdateBy(1L);
+        order.setUpdateTime(new Date());
+        adWorkOrderMapper.updateById(order);
+        return order;
+    }
+
     private String nextWorkNo(Date date) {
         return "WO" + new SimpleDateFormat("yyyyMMddHHmmssSSS").format(date);
     }

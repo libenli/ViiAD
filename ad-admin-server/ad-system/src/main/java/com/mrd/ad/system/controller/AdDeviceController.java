@@ -4,7 +4,13 @@ import com.mrd.ad.business.device.domain.AdDevice;
 import com.mrd.ad.business.device.dto.AdDeviceCreateRequest;
 import com.mrd.ad.business.device.dto.AdDeviceQuery;
 import com.mrd.ad.business.device.dto.AdDeviceUpdateRequest;
+import com.mrd.ad.business.device.dto.ViitalkDeviceCommandAckRequest;
+import com.mrd.ad.business.device.dto.ViitalkDeviceCommandAckResult;
+import com.mrd.ad.business.device.dto.ViitalkDeviceCommandRequest;
+import com.mrd.ad.business.device.dto.ViitalkDeviceCommandResult;
+import com.mrd.ad.business.device.dto.ViitalkDeviceOnlineStatus;
 import com.mrd.ad.business.device.service.AdDeviceService;
+import com.mrd.ad.business.device.service.ViitalkDeviceOnlineService;
 import com.mrd.ad.common.annotation.RequiresPermission;
 import com.mrd.ad.common.core.ApiResult;
 import com.mrd.ad.common.core.PageResult;
@@ -16,6 +22,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -23,15 +30,40 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdDeviceController {
 
     private final AdDeviceService adDeviceService;
+    private final ViitalkDeviceOnlineService viitalkDeviceOnlineService;
 
-    public AdDeviceController(AdDeviceService adDeviceService) {
+    public AdDeviceController(AdDeviceService adDeviceService,
+                              ViitalkDeviceOnlineService viitalkDeviceOnlineService) {
         this.adDeviceService = adDeviceService;
+        this.viitalkDeviceOnlineService = viitalkDeviceOnlineService;
     }
 
     @OperLog(module = "设备管理", businessType = "QUERY")
     @GetMapping
     public ApiResult<PageResult<AdDevice>> page(AdDeviceQuery query) {
         return ApiResult.success(adDeviceService.page(query));
+    }
+
+    @GetMapping("/viitalk/online")
+    public ApiResult<ViitalkDeviceOnlineStatus> viitalkOnline(@RequestParam String mzNumber) {
+        return ApiResult.success(viitalkDeviceOnlineService.queryOnlineStatus(mzNumber));
+    }
+
+    @OperLog(module = "设备管理", businessType = "SEND")
+    @RequiresPermission("device:manage")
+    @PostMapping("/viitalk/command")
+    public ApiResult<ViitalkDeviceCommandResult> sendViitalkCommand(@Validated @RequestBody ViitalkDeviceCommandRequest request) {
+        return ApiResult.success(viitalkDeviceOnlineService.sendCommand(request));
+    }
+
+    @PostMapping("/viitalk/command/ack")
+    public ApiResult<ViitalkDeviceCommandAckResult> receiveViitalkCommandAck(@RequestBody ViitalkDeviceCommandAckRequest request) {
+        return ApiResult.success(viitalkDeviceOnlineService.receiveCommandAck(request));
+    }
+
+    @GetMapping("/viitalk/command/ack")
+    public ApiResult<ViitalkDeviceCommandAckResult> queryViitalkCommandAck(@RequestParam String requestId) {
+        return ApiResult.success(viitalkDeviceOnlineService.queryCommandAck(requestId));
     }
 
     @GetMapping("/{id}")

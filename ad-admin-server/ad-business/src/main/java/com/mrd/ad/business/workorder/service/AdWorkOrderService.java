@@ -20,4 +20,6 @@ public interface AdWorkOrderService {
     AdWorkOrder start(Long id);
 
     AdWorkOrder close(Long id, String content);
+
+    AdWorkOrder reopen(Long id);
 }
