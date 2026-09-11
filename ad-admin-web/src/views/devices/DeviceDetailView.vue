@@ -21,7 +21,6 @@
     <el-descriptions v-else-if="device" :column="2" border>
       <el-descriptions-item :label="locale.t('page.devices.code')">{{ device.deviceCode }}</el-descriptions-item>
       <el-descriptions-item :label="locale.t('page.devices.name')">{{ device.deviceName }}</el-descriptions-item>
-      <el-descriptions-item :label="locale.t('page.devices.buildingId')">{{ device.buildingId || '-' }}</el-descriptions-item>
       <el-descriptions-item :label="locale.t('page.devices.floor')">{{ device.floorNo || '-' }}</el-descriptions-item>
       <el-descriptions-item :label="locale.t('page.devices.screenSize')">{{ device.screenSize || '-' }}</el-descriptions-item>
       <el-descriptions-item :label="locale.t('page.devices.resolution')">{{ device.resolution || '-' }}</el-descriptions-item>
@@ -42,7 +41,7 @@
           {{ getDeviceStatusLabel(device.status) }}
         </el-tag>
       </el-descriptions-item>
-      <el-descriptions-item :label="locale.t('page.devices.currentPlanId')">{{ device.currentPlanId || '-' }}</el-descriptions-item>
+      <el-descriptions-item :label="locale.t('page.devices.currentPlanId')">{{ getPlanText(device.currentPlanId) }}</el-descriptions-item>
       <el-descriptions-item :label="locale.t('page.devices.lastOnlineTime')">{{ device.lastOnlineTime || '-' }}</el-descriptions-item>
       <el-descriptions-item :label="locale.t('page.devices.createTime')">{{ device.createTime || '-' }}</el-descriptions-item>
     </el-descriptions>
@@ -67,6 +66,7 @@ import {
   setDeviceOnline,
   type AdDevice
 } from '@/api/devices'
+import { fetchPlans, type AdPlan } from '@/api/plans'
 import { useLocaleStore } from '@/stores/locale'
 
 const route = useRoute()
@@ -76,12 +76,13 @@ const user = useUserStore()
 const loading = ref(false)
 const acting = ref(false)
 const device = ref<AdDevice>()
+const planOptions = ref<AdPlan[]>([])
 
 const stats = computed(() => [
   { label: locale.t('page.devices.onlineStatus'), value: device.value ? getOnlineLabel(device.value.onlineStatus) : '-' },
   { label: locale.t('page.devices.faultStatus'), value: device.value ? getFaultLabel(device.value.faultStatus) : '-' },
   { label: locale.t('page.devices.deviceStatus'), value: device.value ? getDeviceStatusLabel(device.value.status) : '-' },
-  { label: locale.t('page.devices.currentPlan'), value: device.value?.currentPlanId || '-' }
+  { label: locale.t('page.devices.currentPlan'), value: getPlanName(device.value?.currentPlanId) }
 ])
 
 function getOnlineLabel(value: string) {
@@ -94,6 +95,31 @@ function getFaultLabel(value: string) {
 
 function getDeviceStatusLabel(value: string) {
   return locale.t(`status.device.${value}`, deviceStatusMap[value]?.label || value)
+}
+
+function findPlan(planId?: number) {
+  return planOptions.value.find((item) => item.id === planId)
+}
+
+function getPlanName(planId?: number) {
+  return findPlan(planId)?.planName || (planId ? `#${planId}` : '-')
+}
+
+function getPlanCode(planId?: number) {
+  return findPlan(planId)?.planCode || (planId ? `ID ${planId}` : '-')
+}
+
+function getPlanText(planId?: number) {
+  return planId ? `${getPlanName(planId)} / ${getPlanCode(planId)}` : '-'
+}
+
+async function loadPlans() {
+  try {
+    const result = await fetchPlans({ page: 1, size: 500 })
+    planOptions.value = result.data.records
+  } catch {
+    planOptions.value = []
+  }
 }
 
 async function loadDetail() {
@@ -129,5 +155,8 @@ async function handleAction(action: 'online' | 'offline' | 'fault' | 'repair') {
   }
 }
 
-onMounted(loadDetail)
+onMounted(() => {
+  loadPlans()
+  loadDetail()
+})
 </script>

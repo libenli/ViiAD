@@ -9,6 +9,7 @@ import com.mrd.ad.business.device.dto.ViitalkDeviceCommandAckResult;
 import com.mrd.ad.business.device.dto.ViitalkDeviceCommandRequest;
 import com.mrd.ad.business.device.dto.ViitalkDeviceCommandResult;
 import com.mrd.ad.business.device.dto.ViitalkDeviceOnlineStatus;
+import com.mrd.ad.business.delivery.service.AdDeliveryService;
 import com.mrd.ad.business.device.service.AdDeviceService;
 import com.mrd.ad.business.device.service.ViitalkDeviceOnlineService;
 import com.mrd.ad.common.annotation.RequiresPermission;
@@ -31,11 +32,14 @@ public class AdDeviceController {
 
     private final AdDeviceService adDeviceService;
     private final ViitalkDeviceOnlineService viitalkDeviceOnlineService;
+    private final AdDeliveryService adDeliveryService;
 
     public AdDeviceController(AdDeviceService adDeviceService,
-                              ViitalkDeviceOnlineService viitalkDeviceOnlineService) {
+                              ViitalkDeviceOnlineService viitalkDeviceOnlineService,
+                              AdDeliveryService adDeliveryService) {
         this.adDeviceService = adDeviceService;
         this.viitalkDeviceOnlineService = viitalkDeviceOnlineService;
+        this.adDeliveryService = adDeliveryService;
     }
 
     @OperLog(module = "设备管理", businessType = "QUERY")
@@ -58,7 +62,9 @@ public class AdDeviceController {
 
     @PostMapping("/viitalk/command/ack")
     public ApiResult<ViitalkDeviceCommandAckResult> receiveViitalkCommandAck(@RequestBody ViitalkDeviceCommandAckRequest request) {
-        return ApiResult.success(viitalkDeviceOnlineService.receiveCommandAck(request));
+        ViitalkDeviceCommandAckResult result = viitalkDeviceOnlineService.receiveCommandAck(request);
+        adDeliveryService.handleCommandAck(request, result);
+        return ApiResult.success(result);
     }
 
     @GetMapping("/viitalk/command/ack")

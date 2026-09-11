@@ -11,7 +11,9 @@
         <el-input v-model="query.keyword" clearable :placeholder="locale.t('page.materials.keywordPlaceholder')" />
       </el-form-item>
       <el-form-item :label="locale.t('page.materials.adId')">
-        <el-input-number v-model="query.adId" :min="1" controls-position="right" />
+        <el-select v-model="query.adId" clearable filterable :loading="adLoading" :placeholder="locale.t('page.materials.adPlaceholder')" style="width: 220px">
+          <el-option v-for="ad in adOptions" :key="ad.id" :label="getAdLabel(ad)" :value="ad.id" />
+        </el-select>
       </el-form-item>
       <el-form-item :label="locale.t('page.materials.status')">
         <el-select v-model="query.status" clearable :placeholder="locale.t('page.materials.allStatus')" style="width: 150px">
@@ -32,7 +34,14 @@
     <el-table v-loading="loading" :data="records" class="data-table" row-key="id">
       <el-table-column prop="materialCode" :label="locale.t('page.materials.code')" min-width="170" />
       <el-table-column prop="materialName" :label="locale.t('page.materials.name')" min-width="220" />
-      <el-table-column prop="adId" :label="locale.t('page.materials.adId')" width="100" />
+      <el-table-column :label="locale.t('page.materials.adId')" min-width="190">
+        <template #default="{ row }">
+          <div class="entity-cell">
+            <strong>{{ getAdName(row.adId) }}</strong>
+            <span>{{ getAdCode(row.adId) }}</span>
+          </div>
+        </template>
+      </el-table-column>
       <el-table-column :label="locale.t('page.materials.type')" width="110">
         <template #default="{ row }">{{ getMaterialTypeLabel(row.materialType) }}</template>
       </el-table-column>
@@ -113,12 +122,15 @@ import {
   submitMaterial,
   type AdMaterial
 } from '@/api/materials'
+import { fetchAds, type AdOrder } from '@/api/ads'
 
 const router = useRouter()
 const locale = useLocaleStore()
 const user = useUserStore()
 const loading = ref(false)
+const adLoading = ref(false)
 const records = ref<AdMaterial[]>([])
+const adOptions = ref<AdOrder[]>([])
 const total = ref(0)
 
 const query = reactive({
@@ -143,6 +155,32 @@ function getMaterialTypeLabel(value: string) {
 
 function getStatusLabel(group: string, value: string, fallback: string) {
   return locale.t(`status.${group}.${value}`, fallback)
+}
+
+function getAdLabel(ad: AdOrder) {
+  return `${ad.adName}（${ad.adCode}）`
+}
+
+function findAd(adId?: number) {
+  return adOptions.value.find((item) => item.id === adId)
+}
+
+function getAdName(adId?: number) {
+  return findAd(adId)?.adName || (adId ? `#${adId}` : '-')
+}
+
+function getAdCode(adId?: number) {
+  return findAd(adId)?.adCode || (adId ? `ID ${adId}` : '-')
+}
+
+async function loadAds() {
+  adLoading.value = true
+  try {
+    const result = await fetchAds({ page: 1, size: 500 })
+    adOptions.value = result.data.records
+  } finally {
+    adLoading.value = false
+  }
 }
 
 async function loadMaterials() {
@@ -177,5 +215,8 @@ async function handleApprove(id: number) {
   loadMaterials()
 }
 
-onMounted(loadMaterials)
+onMounted(() => {
+  loadAds()
+  loadMaterials()
+})
 </script>

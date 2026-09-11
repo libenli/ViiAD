@@ -33,8 +33,13 @@
       <el-table-column :label="locale.t('page.partners.source')" width="120">
         <template #default="{ row }">{{ getStringLabel('advertiserSource', row.sourceType || '', advertiserSourceMap[row.sourceType] || row.sourceType || '-') }}</template>
       </el-table-column>
-      <el-table-column prop="agentId" :label="locale.t('page.partners.agentId')" width="110">
-        <template #default="{ row }">{{ row.agentId || '-' }}</template>
+      <el-table-column :label="locale.t('page.partners.agentId')" min-width="180">
+        <template #default="{ row }">
+          <div class="entity-cell">
+            <strong>{{ getAgentName(row.agentId) }}</strong>
+            <span>{{ getAgentCode(row.agentId) }}</span>
+          </div>
+        </template>
       </el-table-column>
       <el-table-column :label="locale.t('page.partners.status')" width="100">
         <template #default="{ row }">
@@ -78,7 +83,7 @@
         <el-descriptions-item :label="locale.t('page.partners.contactPhone')">{{ current.contactPhone || '-' }}</el-descriptions-item>
         <el-descriptions-item :label="locale.t('page.partners.email')">{{ current.contactEmail || '-' }}</el-descriptions-item>
         <el-descriptions-item :label="locale.t('page.partners.source')">{{ getStringLabel('advertiserSource', current.sourceType || '', advertiserSourceMap[current.sourceType || ''] || current.sourceType || '-') }}</el-descriptions-item>
-        <el-descriptions-item :label="locale.t('page.partners.agentId')">{{ current.agentId || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.partners.agentId')">{{ getAgentText(current.agentId) }}</el-descriptions-item>
         <el-descriptions-item :label="locale.t('page.partners.remark')">{{ current.remark || '-' }}</el-descriptions-item>
       </el-descriptions>
     </el-drawer>
@@ -194,6 +199,23 @@ function getStringLabel(group: string, value: string, fallback: string) {
 
 function getAgentLabel(item: Agent) {
   return `${item.agentName}（${item.agentCode}）`
+}
+
+function findAgent(agentId?: number) {
+  return agentOptions.value.find((item) => item.id === agentId)
+}
+
+function getAgentName(agentId?: number) {
+  return findAgent(agentId)?.agentName || (agentId ? `#${agentId}` : '-')
+}
+
+function getAgentCode(agentId?: number) {
+  return findAgent(agentId)?.agentCode || (agentId ? `ID ${agentId}` : '-')
+}
+
+function getAgentText(agentId?: number) {
+  const agent = findAgent(agentId)
+  return agent ? `${agent.agentName} / ${agent.agentCode}` : (agentId ? `#${agentId}` : '-')
 }
 
 function validatePhone(_rule: unknown, value: string, callback: (error?: Error) => void) {

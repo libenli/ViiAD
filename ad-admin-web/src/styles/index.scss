@@ -266,6 +266,45 @@ body {
   margin-left: 0;
 }
 
+.entity-cell {
+  display: grid;
+  gap: 3px;
+  line-height: 1.35;
+}
+
+.entity-cell strong {
+  color: #e7f3f7;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.entity-cell span {
+  color: rgba(184, 209, 220, 0.68);
+  font-size: 12px;
+}
+
+.linked-entity-list {
+  display: grid;
+  gap: 6px;
+}
+
+.linked-entity-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: baseline;
+}
+
+.linked-entity-item strong {
+  color: #e7f3f7;
+  font-weight: 700;
+}
+
+.linked-entity-item span {
+  color: rgba(184, 209, 220, 0.72);
+  font-size: 12px;
+}
+
 .table-footer {
   display: flex;
   justify-content: flex-end;

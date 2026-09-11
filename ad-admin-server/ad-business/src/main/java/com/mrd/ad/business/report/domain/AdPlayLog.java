@@ -17,6 +17,11 @@ public class AdPlayLog {
     private Integer playDuration;
     private String sourceType;
     private java.util.Date createTime;
+    private String playStatus;
+    private java.util.Date playStartTime;
+    private java.util.Date playEndTime;
+    private String requestId;
+    private String errorMessage;
 
     public Long getId() {
         return id;
@@ -96,5 +101,45 @@ public class AdPlayLog {
 
     public void setCreateTime(java.util.Date createTime) {
         this.createTime = createTime;
+    }
+
+    public String getPlayStatus() {
+        return playStatus;
+    }
+
+    public void setPlayStatus(String playStatus) {
+        this.playStatus = playStatus;
+    }
+
+    public java.util.Date getPlayStartTime() {
+        return playStartTime;
+    }
+
+    public void setPlayStartTime(java.util.Date playStartTime) {
+        this.playStartTime = playStartTime;
+    }
+
+    public java.util.Date getPlayEndTime() {
+        return playEndTime;
+    }
+
+    public void setPlayEndTime(java.util.Date playEndTime) {
+        this.playEndTime = playEndTime;
+    }
+
+    public String getRequestId() {
+        return requestId;
+    }
+
+    public void setRequestId(String requestId) {
+        this.requestId = requestId;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
     }
 }

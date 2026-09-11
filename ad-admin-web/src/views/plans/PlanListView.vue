@@ -11,7 +11,9 @@
         <el-input v-model="query.keyword" clearable :placeholder="locale.t('page.plans.keywordPlaceholder')" />
       </el-form-item>
       <el-form-item :label="locale.t('page.plans.adId')">
-        <el-input-number v-model="query.adId" :min="1" controls-position="right" />
+        <el-select v-model="query.adId" clearable filterable :loading="adLoading" :placeholder="locale.t('page.plans.adPlaceholder')" style="width: 220px">
+          <el-option v-for="ad in adOptions" :key="ad.id" :label="getAdLabel(ad)" :value="ad.id" />
+        </el-select>
       </el-form-item>
       <el-form-item :label="locale.t('page.plans.scheduleStatus')">
         <el-select v-model="query.scheduleStatus" clearable :placeholder="locale.t('page.plans.allSchedule')" style="width: 150px">
@@ -32,7 +34,14 @@
     <el-table v-loading="loading" :data="records" class="data-table" row-key="id">
       <el-table-column prop="planCode" :label="locale.t('page.plans.code')" min-width="180" />
       <el-table-column prop="planName" :label="locale.t('page.plans.name')" min-width="220" />
-      <el-table-column prop="adId" :label="locale.t('page.plans.adId')" width="100" />
+      <el-table-column :label="locale.t('page.plans.adId')" min-width="190">
+        <template #default="{ row }">
+          <div class="entity-cell">
+            <strong>{{ getAdName(row.adId) }}</strong>
+            <span>{{ getAdCode(row.adId) }}</span>
+          </div>
+        </template>
+      </el-table-column>
       <el-table-column prop="regionCode" :label="locale.t('page.plans.region')" min-width="140" />
       <el-table-column :label="locale.t('page.plans.period')" min-width="260">
         <template #default="{ row }">
@@ -111,12 +120,15 @@ import {
   startPlan,
   type AdPlan
 } from '@/api/plans'
+import { fetchAds, type AdOrder } from '@/api/ads'
 
 const router = useRouter()
 const locale = useLocaleStore()
 const user = useUserStore()
 const loading = ref(false)
+const adLoading = ref(false)
 const records = ref<AdPlan[]>([])
+const adOptions = ref<AdOrder[]>([])
 const total = ref(0)
 
 const query = reactive({
@@ -137,6 +149,32 @@ const stats = computed(() => [
 
 function getStatusLabel(group: string, value: string, fallback: string) {
   return locale.t(`status.${group}.${value}`, fallback)
+}
+
+function getAdLabel(ad: AdOrder) {
+  return `${ad.adName}（${ad.adCode}）`
+}
+
+function findAd(adId?: number) {
+  return adOptions.value.find((item) => item.id === adId)
+}
+
+function getAdName(adId?: number) {
+  return findAd(adId)?.adName || (adId ? `#${adId}` : '-')
+}
+
+function getAdCode(adId?: number) {
+  return findAd(adId)?.adCode || (adId ? `ID ${adId}` : '-')
+}
+
+async function loadAds() {
+  adLoading.value = true
+  try {
+    const result = await fetchAds({ page: 1, size: 500 })
+    adOptions.value = result.data.records
+  } finally {
+    adLoading.value = false
+  }
 }
 
 function canEdit(row: AdPlan) {
@@ -200,5 +238,8 @@ async function handleFinish(id: number) {
   loadPlans()
 }
 
-onMounted(loadPlans)
+onMounted(() => {
+  loadAds()
+  loadPlans()
+})
 </script>

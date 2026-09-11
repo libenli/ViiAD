@@ -7,9 +7,6 @@
       <el-form-item :label="locale.t('page.devices.name')" prop="deviceName">
         <el-input v-model="form.deviceName" maxlength="80" show-word-limit :placeholder="locale.t('page.devices.deviceNamePlaceholder')" />
       </el-form-item>
-      <el-form-item :label="locale.t('page.devices.buildingId')">
-        <el-input-number v-model="form.buildingId" :min="1" controls-position="right" />
-      </el-form-item>
       <el-form-item :label="locale.t('page.devices.floor')">
         <el-input v-model="form.floorNo" :placeholder="locale.t('page.devices.floorPlaceholder')" />
       </el-form-item>
@@ -19,12 +16,12 @@
       <el-form-item :label="locale.t('page.devices.resolution')">
         <el-input v-model="form.resolution" :placeholder="locale.t('page.devices.resolutionPlaceholder')" />
       </el-form-item>
-      <el-form-item :label="locale.t('page.devices.ip')">
+      <!-- <el-form-item :label="locale.t('page.devices.ip')">
         <el-input v-model="form.ipAddress" :placeholder="locale.t('page.devices.ipPlaceholder')" />
       </el-form-item>
       <el-form-item :label="locale.t('page.devices.mac')">
         <el-input v-model="form.macAddress" :placeholder="locale.t('page.devices.macPlaceholder')" />
-      </el-form-item>
+      </el-form-item> -->
       <el-form-item class="form-actions">
         <el-button @click="router.back()">{{ locale.t('common.back') }}</el-button>
         <el-button type="primary" :loading="saving" @click="handleSave">
@@ -54,7 +51,6 @@ const isEdit = computed(() => Boolean(route.params.id))
 const form = reactive({
   deviceCode: '',
   deviceName: '',
-  buildingId: undefined as number | undefined,
   floorNo: '',
   screenSize: '',
   resolution: '',
@@ -78,7 +74,6 @@ function buildPayload(): AdDevicePayload {
   return {
     deviceCode: form.deviceCode,
     deviceName: form.deviceName,
-    buildingId: form.buildingId,
     floorNo: form.floorNo,
     screenSize: form.screenSize,
     resolution: form.resolution,
@@ -95,7 +90,6 @@ async function loadDetail() {
   const device = result.data
   form.deviceCode = device.deviceCode || ''
   form.deviceName = device.deviceName
-  form.buildingId = device.buildingId
   form.floorNo = device.floorNo || ''
   form.screenSize = device.screenSize || ''
   form.resolution = device.resolution || ''

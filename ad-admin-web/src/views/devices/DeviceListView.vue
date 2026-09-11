@@ -10,9 +10,6 @@
       <el-form-item :label="locale.t('page.devices.keyword')">
         <el-input v-model="query.keyword" clearable :placeholder="locale.t('page.devices.keywordPlaceholder')" />
       </el-form-item>
-      <el-form-item :label="locale.t('page.devices.buildingId')">
-        <el-input-number v-model="query.buildingId" :min="1" controls-position="right" />
-      </el-form-item>
       <el-form-item :label="locale.t('page.devices.onlineStatus')">
         <el-select v-model="query.onlineStatus" clearable :placeholder="locale.t('page.devices.allOnline')" style="width: 140px">
           <el-option v-for="(item, key) in onlineStatusMap" :key="key" :label="getStatusLabel('online', String(key), item.label)" :value="key" />
@@ -37,14 +34,13 @@
     <el-table v-loading="loading" :data="records" class="data-table" row-key="id">
       <el-table-column prop="deviceCode" :label="locale.t('page.devices.code')" min-width="180" />
       <el-table-column prop="deviceName" :label="locale.t('page.devices.name')" min-width="180" />
-      <el-table-column prop="buildingId" :label="locale.t('page.devices.buildingId')" width="100" />
       <el-table-column prop="floorNo" :label="locale.t('page.devices.floor')" width="90" />
       <el-table-column prop="screenSize" :label="locale.t('page.devices.screen')" width="120" />
       <el-table-column prop="resolution" :label="locale.t('page.devices.resolution')" width="130" />
       <el-table-column prop="ipAddress" :label="locale.t('page.devices.ip')" min-width="140" />
       <el-table-column prop="provinceName" :label="locale.t('page.devices.province')" width="100" />
       <el-table-column prop="cityName" :label="locale.t('page.devices.city')" width="100" />
-      <el-table-column prop="regionName" :label="locale.t('page.devices.region')" min-width="160" />
+      <!-- <el-table-column prop="regionName" :label="locale.t('page.devices.region')" min-width="160" /> -->
       <el-table-column :label="locale.t('page.devices.online')" width="90">
         <template #default="{ row }">
           <el-tag :type="onlineStatusMap[row.onlineStatus]?.type || 'info'" effect="dark">
@@ -66,7 +62,14 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="currentPlanId" :label="locale.t('page.devices.currentPlan')" width="110" />
+      <el-table-column :label="locale.t('page.devices.currentPlan')" min-width="190">
+        <template #default="{ row }">
+          <div class="entity-cell">
+            <strong>{{ getPlanName(row.currentPlanId) }}</strong>
+            <span>{{ getPlanCode(row.currentPlanId) }}</span>
+          </div>
+        </template>
+      </el-table-column>
       <el-table-column prop="lastOnlineTime" :label="locale.t('page.devices.lastOnline')" min-width="170" />
       <el-table-column :label="locale.t('common.operation')" width="260" fixed="right" class-name="operation-column">
         <template #default="{ row }">
@@ -130,17 +133,18 @@ import {
   setDeviceOnline,
   type AdDevice
 } from '@/api/devices'
+import { fetchPlans, type AdPlan } from '@/api/plans'
 
 const router = useRouter()
 const locale = useLocaleStore()
 const user = useUserStore()
 const loading = ref(false)
 const records = ref<AdDevice[]>([])
+const planOptions = ref<AdPlan[]>([])
 const total = ref(0)
 
 const query = reactive({
   keyword: '',
-  buildingId: undefined as number | undefined,
   onlineStatus: '',
   faultStatus: '',
   status: '',
@@ -159,6 +163,27 @@ function getStatusLabel(group: string, value: string, fallback: string) {
   return locale.t(`status.${group}.${value}`, fallback)
 }
 
+function findPlan(planId?: number) {
+  return planOptions.value.find((item) => item.id === planId)
+}
+
+function getPlanName(planId?: number) {
+  return findPlan(planId)?.planName || (planId ? `#${planId}` : '-')
+}
+
+function getPlanCode(planId?: number) {
+  return findPlan(planId)?.planCode || (planId ? `ID ${planId}` : '-')
+}
+
+async function loadPlans() {
+  try {
+    const result = await fetchPlans({ page: 1, size: 500 })
+    planOptions.value = result.data.records
+  } catch {
+    planOptions.value = []
+  }
+}
+
 async function loadDevices() {
   loading.value = true
   try {
@@ -172,7 +197,6 @@ async function loadDevices() {
 
 function resetQuery() {
   query.keyword = ''
-  query.buildingId = undefined
   query.onlineStatus = ''
   query.faultStatus = ''
   query.status = ''
@@ -222,7 +246,8 @@ async function handleEnable(id: number) {
   loadDevices()
 }
 
-onMounted(loadDevices)
+onMounted(() => {
+  loadPlans()
+  loadDevices()
+})
 </script>
-
-

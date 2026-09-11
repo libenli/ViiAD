@@ -9,8 +9,11 @@ export interface AdDeliveryRecord {
   deliveryType: string
   deliveryStatus: string
   responseMsg?: string
+  requestId?: string
   retryCount?: number
   deliveryTime?: string
+  ackTime?: string
+  ackMessage?: string
 }
 
 export interface AdDeliveryQuery {

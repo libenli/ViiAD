@@ -2,6 +2,7 @@ package com.mrd.ad.system.controller;
 
 import com.mrd.ad.business.plan.domain.AdPlan;
 import com.mrd.ad.business.plan.dto.AdPlanCreateRequest;
+import com.mrd.ad.business.plan.dto.AdPlanDeviceReceipt;
 import com.mrd.ad.business.plan.dto.AdPlanQuery;
 import com.mrd.ad.business.plan.dto.AdPlanUpdateRequest;
 import com.mrd.ad.business.plan.service.AdPlanService;
@@ -17,6 +18,8 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/plans")
@@ -37,6 +40,11 @@ public class AdPlanController {
     @GetMapping("/{id}")
     public ApiResult<AdPlan> detail(@PathVariable Long id) {
         return ApiResult.success(adPlanService.getDetail(id));
+    }
+
+    @GetMapping("/{id}/device-receipts")
+    public ApiResult<List<AdPlanDeviceReceipt>> deviceReceipts(@PathVariable Long id) {
+        return ApiResult.success(adPlanService.listDeviceReceipts(id));
     }
 
     @OperLog(module = "投放计划", businessType = "CREATE")

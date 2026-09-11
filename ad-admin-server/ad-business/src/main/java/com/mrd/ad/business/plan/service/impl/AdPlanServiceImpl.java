@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mrd.ad.business.ad.domain.AdOrder;
 import com.mrd.ad.business.ad.mapper.AdOrderMapper;
+import com.mrd.ad.business.delivery.domain.AdDeliveryRecord;
+import com.mrd.ad.business.delivery.mapper.AdDeliveryRecordMapper;
 import com.mrd.ad.business.delivery.service.AdDeliveryService;
 import com.mrd.ad.business.device.domain.AdDevice;
 import com.mrd.ad.business.device.mapper.AdDeviceMapper;
@@ -13,12 +15,15 @@ import com.mrd.ad.business.plan.domain.AdPlan;
 import com.mrd.ad.business.plan.domain.AdPlanDevice;
 import com.mrd.ad.business.plan.domain.AdPlanMaterial;
 import com.mrd.ad.business.plan.dto.AdPlanCreateRequest;
+import com.mrd.ad.business.plan.dto.AdPlanDeviceReceipt;
 import com.mrd.ad.business.plan.dto.AdPlanQuery;
 import com.mrd.ad.business.plan.dto.AdPlanUpdateRequest;
 import com.mrd.ad.business.plan.mapper.AdPlanDeviceMapper;
 import com.mrd.ad.business.plan.mapper.AdPlanMapper;
 import com.mrd.ad.business.plan.mapper.AdPlanMaterialMapper;
 import com.mrd.ad.business.plan.service.AdPlanService;
+import com.mrd.ad.business.report.domain.AdPlayLog;
+import com.mrd.ad.business.report.mapper.AdPlayLogMapper;
 import com.mrd.ad.business.system.service.SysDataScopeService;
 import com.mrd.ad.common.core.PageResult;
 import com.mrd.ad.common.exception.BusinessException;
@@ -41,26 +46,32 @@ public class AdPlanServiceImpl implements AdPlanService {
     private final AdPlanMapper adPlanMapper;
     private final AdPlanMaterialMapper adPlanMaterialMapper;
     private final AdPlanDeviceMapper adPlanDeviceMapper;
+    private final AdDeliveryRecordMapper adDeliveryRecordMapper;
     private final AdOrderMapper adOrderMapper;
     private final AdMaterialMapper adMaterialMapper;
     private final AdDeviceMapper adDeviceMapper;
+    private final AdPlayLogMapper adPlayLogMapper;
     private final AdDeliveryService adDeliveryService;
     private final SysDataScopeService dataScopeService;
 
     public AdPlanServiceImpl(AdPlanMapper adPlanMapper,
                              AdPlanMaterialMapper adPlanMaterialMapper,
                              AdPlanDeviceMapper adPlanDeviceMapper,
+                             AdDeliveryRecordMapper adDeliveryRecordMapper,
                              AdOrderMapper adOrderMapper,
                              AdMaterialMapper adMaterialMapper,
                              AdDeviceMapper adDeviceMapper,
+                             AdPlayLogMapper adPlayLogMapper,
                              AdDeliveryService adDeliveryService,
                              SysDataScopeService dataScopeService) {
         this.adPlanMapper = adPlanMapper;
         this.adPlanMaterialMapper = adPlanMaterialMapper;
         this.adPlanDeviceMapper = adPlanDeviceMapper;
+        this.adDeliveryRecordMapper = adDeliveryRecordMapper;
         this.adOrderMapper = adOrderMapper;
         this.adMaterialMapper = adMaterialMapper;
         this.adDeviceMapper = adDeviceMapper;
+        this.adPlayLogMapper = adPlayLogMapper;
         this.adDeliveryService = adDeliveryService;
         this.dataScopeService = dataScopeService;
     }
@@ -104,6 +115,34 @@ public class AdPlanServiceImpl implements AdPlanService {
         dataScopeService.assertAdIdVisible(plan.getAdId());
         fillRelations(plan);
         return plan;
+    }
+
+    @Override
+    public List<AdPlanDeviceReceipt> listDeviceReceipts(Long id) {
+        AdPlan plan = getDetail(id);
+        if (plan.getDeviceIds() == null || plan.getDeviceIds().isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<AdPlanDeviceReceipt> receipts = new java.util.ArrayList<AdPlanDeviceReceipt>();
+        for (Long deviceId : plan.getDeviceIds()) {
+            AdDevice device = adDeviceMapper.selectById(deviceId);
+            if (device == null || Integer.valueOf(1).equals(device.getDeleted())) {
+                continue;
+            }
+            AdDeliveryRecord delivery = latestDeliveryRecord(plan.getId(), deviceId);
+            AdPlayLog playLog = latestPlayLog(plan.getId(), deviceId);
+            AdPlanDeviceReceipt receipt = new AdPlanDeviceReceipt();
+            receipt.setDeviceId(device.getId());
+            receipt.setDeviceCode(device.getDeviceCode());
+            receipt.setDeviceName(device.getDeviceName());
+            receipt.setOnlineStatus(device.getOnlineStatus());
+            receipt.setFaultStatus(device.getFaultStatus());
+            receipt.setLastOnlineTime(device.getLastOnlineTime());
+            fillDeliveryReceipt(receipt, delivery);
+            fillPlayReceipt(receipt, plan, device, delivery, playLog);
+            receipts.add(receipt);
+        }
+        return receipts;
     }
 
     @Override
@@ -208,6 +247,68 @@ public class AdPlanServiceImpl implements AdPlanService {
         adDeliveryService.stopPlan(plan.getId(), plan.getDeviceIds(), "finish");
         releaseCurrentPlanForDevices(plan);
         return getDetail(id);
+    }
+
+    private AdDeliveryRecord latestDeliveryRecord(Long planId, Long deviceId) {
+        List<AdDeliveryRecord> records = adDeliveryRecordMapper.selectList(new LambdaQueryWrapper<AdDeliveryRecord>()
+                .eq(AdDeliveryRecord::getPlanId, planId)
+                .eq(AdDeliveryRecord::getDeviceId, deviceId)
+                .orderByDesc(AdDeliveryRecord::getDeliveryTime)
+                .last("LIMIT 1"));
+        return records == null || records.isEmpty() ? null : records.get(0);
+    }
+
+    private AdPlayLog latestPlayLog(Long planId, Long deviceId) {
+        List<AdPlayLog> logs = adPlayLogMapper.selectList(new LambdaQueryWrapper<AdPlayLog>()
+                .eq(AdPlayLog::getPlanId, planId)
+                .eq(AdPlayLog::getDeviceId, deviceId)
+                .orderByDesc(AdPlayLog::getCreateTime)
+                .last("LIMIT 1"));
+        return logs == null || logs.isEmpty() ? null : logs.get(0);
+    }
+
+    private void fillDeliveryReceipt(AdPlanDeviceReceipt receipt, AdDeliveryRecord delivery) {
+        if (delivery == null) {
+            receipt.setDeliveryStatus("not_delivered");
+            receipt.setResponseMsg("尚未生成下发记录");
+            return;
+        }
+        receipt.setDeliveryRecordId(delivery.getId());
+        receipt.setDeliveryStatus(delivery.getDeliveryStatus());
+        receipt.setResponseMsg(delivery.getResponseMsg());
+        receipt.setRequestId(delivery.getRequestId());
+        receipt.setDeliveryTime(delivery.getDeliveryTime());
+        receipt.setAckTime(delivery.getAckTime());
+        receipt.setAckMessage(delivery.getAckMessage());
+    }
+
+    private void fillPlayReceipt(AdPlanDeviceReceipt receipt, AdPlan plan, AdDevice device, AdDeliveryRecord delivery, AdPlayLog playLog) {
+        if (playLog != null) {
+            receipt.setPlayStatus(resolveReceiptPlayStatus(playLog, plan, device, delivery));
+            receipt.setLastPlayTime(playLog.getCreateTime());
+            receipt.setPlayErrorMessage(playLog.getErrorMessage());
+            receipt.setPlayCount(playLog.getPlayCount());
+            return;
+        }
+        receipt.setPlayCount(0);
+        if (isDeliverySuccess(delivery)) {
+            receipt.setPlayStatus("waiting_play");
+        } else if (delivery != null && "failed".equals(delivery.getDeliveryStatus())) {
+            receipt.setPlayStatus("blocked");
+        } else {
+            receipt.setPlayStatus("not_started");
+        }
+    }
+
+    private boolean isDeliverySuccess(AdDeliveryRecord delivery) {
+        return delivery != null && "success".equals(delivery.getDeliveryStatus());
+    }
+
+    private String resolveReceiptPlayStatus(AdPlayLog playLog, AdPlan plan, AdDevice device, AdDeliveryRecord delivery) {
+        if (StringUtils.isNotBlank(playLog.getPlayStatus())) {
+            return playLog.getPlayStatus();
+        }
+        return plan.getId().equals(device.getCurrentPlanId()) && isDeliverySuccess(delivery) ? "playing" : "played";
     }
 
     private void validatePlanRequest(AdPlanCreateRequest request, boolean requireStartNotPast) {

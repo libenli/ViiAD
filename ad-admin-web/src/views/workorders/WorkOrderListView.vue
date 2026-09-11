@@ -23,6 +23,16 @@
           <el-option v-for="(item, key) in workOrderStatusMap" :key="key" :label="getStatusLabel('workOrder', String(key), item.label)" :value="key" />
         </el-select>
       </el-form-item>
+      <el-form-item :label="locale.t('page.workorders.assigneeId')">
+        <el-select v-model="query.assigneeId" clearable filterable :loading="userLoading" :placeholder="locale.t('page.workorders.assigneePlaceholder')" style="width: 210px">
+          <el-option v-for="item in assigneeOptions" :key="item.id" :label="getUserLabel(item)" :value="item.id" />
+        </el-select>
+      </el-form-item>
+      <el-form-item :label="locale.t('page.workorders.relatedPlan')">
+        <el-select v-model="query.relatedPlanId" clearable filterable :loading="planLoading" :placeholder="locale.t('page.workorders.planPlaceholder')" style="width: 220px">
+          <el-option v-for="plan in planOptions" :key="plan.id" :label="getPlanLabel(plan)" :value="plan.id" />
+        </el-select>
+      </el-form-item>
       <el-form-item>
         <el-button type="primary" :icon="Search" @click="loadOrders">{{ locale.t('common.search') }}</el-button>
         <el-button :icon="Refresh" @click="resetQuery">{{ locale.t('common.reset') }}</el-button>
@@ -49,8 +59,22 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="assigneeId" :label="locale.t('page.workorders.assigneeId')" width="110" />
-      <el-table-column prop="relatedPlanId" :label="locale.t('page.workorders.relatedPlan')" width="110" />
+      <el-table-column :label="locale.t('page.workorders.assigneeId')" min-width="180">
+        <template #default="{ row }">
+          <div class="entity-cell">
+            <strong>{{ getAssigneeName(row.assigneeId) }}</strong>
+            <span>{{ getAssigneeAccount(row.assigneeId) }}</span>
+          </div>
+        </template>
+      </el-table-column>
+      <el-table-column :label="locale.t('page.workorders.relatedPlan')" min-width="190">
+        <template #default="{ row }">
+          <div class="entity-cell">
+            <strong>{{ getPlanName(row.relatedPlanId) }}</strong>
+            <span>{{ getPlanCode(row.relatedPlanId) }}</span>
+          </div>
+        </template>
+      </el-table-column>
       <el-table-column prop="createTime" :label="locale.t('page.workorders.createTime')" min-width="170" />
       <el-table-column :label="locale.t('common.operation')" width="205" fixed="right" class-name="operation-column">
         <template #default="{ row }">
@@ -85,8 +109,8 @@
         <el-descriptions-item :label="locale.t('page.workorders.source')">{{ getStringStatusLabel('workOrderSource', current.sourceType, workOrderSourceMap[current.sourceType] || current.sourceType) }}</el-descriptions-item>
         <el-descriptions-item :label="locale.t('page.workorders.priority')">{{ getStatusLabel('workOrderPriority', current.priority, workOrderPriorityMap[current.priority]?.label || current.priority) }}</el-descriptions-item>
         <el-descriptions-item :label="locale.t('page.workorders.status')">{{ getStatusLabel('workOrder', current.status, workOrderStatusMap[current.status]?.label || current.status) }}</el-descriptions-item>
-        <el-descriptions-item :label="locale.t('page.workorders.assigneeId')">{{ current.assigneeId || '-' }}</el-descriptions-item>
-        <el-descriptions-item :label="locale.t('page.workorders.relatedPlan')">{{ current.relatedPlanId || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.workorders.assigneeId')">{{ getAssigneeName(current.assigneeId) }} / {{ getAssigneeAccount(current.assigneeId) }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.workorders.relatedPlan')">{{ getPlanName(current.relatedPlanId) }} / {{ getPlanCode(current.relatedPlanId) }}</el-descriptions-item>
         <el-descriptions-item :label="locale.t('page.workorders.content')">{{ current.content || '-' }}</el-descriptions-item>
         <el-descriptions-item :label="locale.t('page.workorders.closeTime')">{{ current.closeTime || '-' }}</el-descriptions-item>
       </el-descriptions>
@@ -181,6 +205,8 @@ const query = reactive({
   sourceType: '',
   priority: '',
   status: '',
+  assigneeId: undefined as number | undefined,
+  relatedPlanId: undefined as number | undefined,
   page: 1,
   size: 10
 })
@@ -221,6 +247,30 @@ function getPlanLabel(plan: AdPlan) {
   return `${plan.planName}（${plan.planCode}）`
 }
 
+function findAssignee(assigneeId?: number) {
+  return assigneeOptions.value.find((item) => item.id === assigneeId)
+}
+
+function findPlan(planId?: number) {
+  return planOptions.value.find((item) => item.id === planId)
+}
+
+function getAssigneeName(assigneeId?: number) {
+  return findAssignee(assigneeId)?.realName || (assigneeId ? `#${assigneeId}` : '-')
+}
+
+function getAssigneeAccount(assigneeId?: number) {
+  return findAssignee(assigneeId)?.username || (assigneeId ? `ID ${assigneeId}` : '-')
+}
+
+function getPlanName(planId?: number) {
+  return findPlan(planId)?.planName || (planId ? `#${planId}` : '-')
+}
+
+function getPlanCode(planId?: number) {
+  return findPlan(planId)?.planCode || (planId ? `ID ${planId}` : '-')
+}
+
 async function loadOrders() {
   loading.value = true
   try {
@@ -257,6 +307,8 @@ function resetQuery() {
   query.sourceType = ''
   query.priority = ''
   query.status = ''
+  query.assigneeId = undefined
+  query.relatedPlanId = undefined
   query.page = 1
   loadOrders()
 }

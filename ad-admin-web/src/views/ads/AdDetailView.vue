@@ -29,8 +29,8 @@
       <el-descriptions :column="2" border>
         <el-descriptions-item :label="locale.t('page.ads.code')">{{ ad.adCode }}</el-descriptions-item>
         <el-descriptions-item :label="locale.t('page.ads.name')">{{ ad.adName }}</el-descriptions-item>
-        <el-descriptions-item :label="locale.t('page.ads.advertiserId')">{{ ad.advertiserId }}</el-descriptions-item>
-        <el-descriptions-item :label="locale.t('page.ads.agentId')">{{ ad.agentId || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.ads.advertiser')">{{ getAdvertiserText(ad.advertiserId) }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.ads.agent')">{{ getAgentText(ad.agentId) }}</el-descriptions-item>
         <el-descriptions-item :label="locale.t('page.ads.type')">{{ getAdTypeLabel(ad.adType) }}</el-descriptions-item>
         <el-descriptions-item :label="locale.t('page.ads.objective')">{{ getObjectiveLabel(ad.objective) }}</el-descriptions-item>
         <el-descriptions-item :label="locale.t('page.ads.region')">{{ ad.regionCode || '-' }}</el-descriptions-item>
@@ -89,6 +89,7 @@ import {
   type AdOrder
 } from '@/api/ads'
 import { fetchMaterials, materialTypeOptions, type AdMaterial } from '@/api/materials'
+import { fetchAdvertisers, fetchAgents, type Advertiser, type Agent } from '@/api/partners'
 import { useLocaleStore } from '@/stores/locale'
 
 const route = useRoute()
@@ -98,13 +99,15 @@ const user = useUserStore()
 const loading = ref(false)
 const ad = ref<AdOrder>()
 const materials = ref<AdMaterial[]>([])
+const advertiserOptions = ref<Advertiser[]>([])
+const agentOptions = ref<Agent[]>([])
 const id = computed(() => Number(route.params.id))
 
 const stats = computed(() => [
   { label: locale.t('page.ads.currentStatus'), value: ad.value ? getStatusLabel(ad.value.status) : '-' },
   { label: locale.t('page.ads.type'), value: ad.value ? getAdTypeLabel(ad.value.adType) : '-' },
   { label: locale.t('page.ads.budget'), value: ad.value ? `￥${ad.value.budgetAmount || 0}` : '-' },
-  { label: locale.t('page.ads.advertiserId'), value: ad.value?.advertiserId || '-' }
+  { label: locale.t('page.ads.advertiser'), value: getAdvertiserName(ad.value?.advertiserId) }
 ])
 
 function getAdTypeLabel(value: string) {
@@ -121,6 +124,42 @@ function getMaterialTypeLabel(value: string) {
 
 function getStatusLabel(value: string) {
   return locale.t(`status.ad.${value}`, adStatusMap[value]?.label || value)
+}
+
+function findAdvertiser(advertiserId?: number) {
+  return advertiserOptions.value.find((item) => item.id === advertiserId)
+}
+
+function findAgent(agentId?: number) {
+  return agentOptions.value.find((item) => item.id === agentId)
+}
+
+function getAdvertiserName(advertiserId?: number) {
+  return findAdvertiser(advertiserId)?.advertiserName || (advertiserId ? `#${advertiserId}` : '-')
+}
+
+function getAdvertiserText(advertiserId?: number) {
+  const advertiser = findAdvertiser(advertiserId)
+  return advertiser ? `${advertiser.advertiserName} / ${advertiser.advertiserCode}` : (advertiserId ? `#${advertiserId}` : '-')
+}
+
+function getAgentText(agentId?: number) {
+  const agent = findAgent(agentId)
+  return agent ? `${agent.agentName} / ${agent.agentCode}` : (agentId ? `#${agentId}` : '-')
+}
+
+async function loadPartners() {
+  try {
+    const [advertisers, agents] = await Promise.all([
+      fetchAdvertisers({ page: 1, size: 500 }),
+      fetchAgents({ page: 1, size: 500 })
+    ])
+    advertiserOptions.value = advertisers.data.records
+    agentOptions.value = agents.data.records
+  } catch {
+    advertiserOptions.value = []
+    agentOptions.value = []
+  }
 }
 
 async function loadDetail() {
@@ -159,7 +198,10 @@ async function handleReject() {
   loadDetail()
 }
 
-onMounted(loadDetail)
+onMounted(() => {
+  loadPartners()
+  loadDetail()
+})
 </script>
 
 <style scoped>

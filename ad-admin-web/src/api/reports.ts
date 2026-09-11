@@ -11,7 +11,12 @@ export interface PlayLog {
   playDate: string
   playCount: number
   playDuration: number
+  playStatus?: string
+  playStartTime?: string
+  playEndTime?: string
   sourceType: string
+  requestId?: string
+  errorMessage?: string
   createTime?: string
 }
 

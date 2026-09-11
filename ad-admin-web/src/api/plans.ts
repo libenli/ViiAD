@@ -20,6 +20,26 @@ export interface AdPlan {
   updateTime?: string
 }
 
+export interface AdPlanDeviceReceipt {
+  deviceId: number
+  deviceCode: string
+  deviceName: string
+  onlineStatus?: string
+  faultStatus?: string
+  lastOnlineTime?: string
+  deliveryRecordId?: number
+  deliveryStatus: string
+  responseMsg?: string
+  requestId?: string
+  deliveryTime?: string
+  ackTime?: string
+  ackMessage?: string
+  playStatus: string
+  lastPlayTime?: string
+  playErrorMessage?: string
+  playCount?: number
+}
+
 export interface AdPlanQuery {
   keyword?: string
   adId?: number
@@ -47,6 +67,10 @@ export function fetchPlans(params: AdPlanQuery) {
 
 export function fetchPlanDetail(id: number) {
   return request.get(`/plans/${id}`) as Promise<ApiResponse<AdPlan>>
+}
+
+export function fetchPlanDeviceReceipts(id: number) {
+  return request.get(`/plans/${id}/device-receipts`) as Promise<ApiResponse<AdPlanDeviceReceipt[]>>
 }
 
 export function createPlan(data: AdPlanPayload) {

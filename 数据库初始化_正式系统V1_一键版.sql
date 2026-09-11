@@ -354,12 +354,16 @@ CREATE TABLE IF NOT EXISTS ad_delivery_record (
   delivery_type VARCHAR(30) DEFAULT 'manual' COMMENT '下发类型',
   delivery_status VARCHAR(30) DEFAULT 'pending' COMMENT '下发状态',
   response_msg VARCHAR(1000) DEFAULT NULL COMMENT '响应信息',
+  request_id VARCHAR(64) DEFAULT NULL COMMENT '设备指令请求ID',
   retry_count INT DEFAULT 0 COMMENT '重试次数',
   delivery_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '下发时间',
+  ack_time DATETIME DEFAULT NULL COMMENT '设备ACK时间',
+  ack_message VARCHAR(1000) DEFAULT NULL COMMENT '设备ACK消息',
   PRIMARY KEY (id),
   KEY idx_ad_delivery_plan (plan_id),
   KEY idx_ad_delivery_device (device_id),
-  KEY idx_ad_delivery_status (delivery_status)
+  KEY idx_ad_delivery_status (delivery_status),
+  UNIQUE KEY uk_ad_delivery_request_id (request_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='计划下发记录表';
 
 -- ----------------------------
@@ -375,13 +379,20 @@ CREATE TABLE IF NOT EXISTS ad_play_log (
   play_date DATE NOT NULL COMMENT '播放日期',
   play_count INT DEFAULT 0 COMMENT '播放次数',
   play_duration INT DEFAULT 0 COMMENT '播放时长秒',
+  play_status VARCHAR(30) DEFAULT 'completed' COMMENT '播放状态：playing/completed/failed/paused',
+  play_start_time DATETIME DEFAULT NULL COMMENT '播放开始时间',
+  play_end_time DATETIME DEFAULT NULL COMMENT '播放结束时间',
+  request_id VARCHAR(80) DEFAULT NULL COMMENT '关联下发请求ID',
+  error_message VARCHAR(1000) DEFAULT NULL COMMENT '播放异常信息',
   source_type VARCHAR(30) DEFAULT 'device' COMMENT '数据来源',
   create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (id),
   KEY idx_ad_play_log_date (play_date),
   KEY idx_ad_play_log_ad (ad_id),
   KEY idx_ad_play_log_plan (plan_id),
-  KEY idx_ad_play_log_device (device_id)
+  KEY idx_ad_play_log_device (device_id),
+  KEY idx_ad_play_log_status (play_status),
+  KEY idx_ad_play_log_request (request_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='播放日志表';
 
 CREATE TABLE IF NOT EXISTS ad_report_daily (

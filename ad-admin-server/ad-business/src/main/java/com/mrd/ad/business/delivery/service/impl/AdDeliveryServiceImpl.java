@@ -1,12 +1,15 @@
 package com.mrd.ad.business.delivery.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mrd.ad.business.delivery.domain.AdDeliveryRecord;
 import com.mrd.ad.business.delivery.dto.AdDeliveryQuery;
 import com.mrd.ad.business.delivery.mapper.AdDeliveryRecordMapper;
 import com.mrd.ad.business.delivery.service.AdDeliveryService;
 import com.mrd.ad.business.device.domain.AdDevice;
+import com.mrd.ad.business.device.dto.ViitalkDeviceCommandAckRequest;
+import com.mrd.ad.business.device.dto.ViitalkDeviceCommandAckResult;
 import com.mrd.ad.business.device.dto.ViitalkDeviceCommandRequest;
 import com.mrd.ad.business.device.dto.ViitalkDeviceCommandResult;
 import com.mrd.ad.business.device.mapper.AdDeviceMapper;
@@ -25,6 +28,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -40,6 +44,7 @@ public class AdDeliveryServiceImpl implements AdDeliveryService {
     private static final String COMMAND_AD_PLAN_PUBLISH = "ad_plan_publish";
     private static final String COMMAND_AD_PLAN_STOP = "ad_plan_stop";
     private static final String DATE_PATTERN = "yyyy-MM-dd HH:mm:ss";
+    private static final int MESSAGE_MAX_LENGTH = 1000;
 
     private final AdDeliveryRecordMapper adDeliveryRecordMapper;
     private final AdDeviceMapper adDeviceMapper;
@@ -145,9 +150,10 @@ public class AdDeliveryServiceImpl implements AdDeliveryService {
             try {
                 ViitalkDeviceCommandResult result = sendDeviceCommand(device, COMMAND_AD_PLAN_PUBLISH, buildPublishPayload(plan, device));
                 record.setDeliveryStatus("pending");
+                record.setRequestId(result.getRequestId());
                 record.setResponseMsg("已下发到设备，等待ACK，requestId=" + result.getRequestId());
                 record.setDeliveryTime(new Date());
-                adDeliveryRecordMapper.updateById(record);
+                updatePendingRequest(record);
             } catch (Exception e) {
                 markFailed(record.getId(), "自动下发失败：" + e.getMessage());
             }
@@ -182,6 +188,52 @@ public class AdDeliveryServiceImpl implements AdDeliveryService {
                 LOGGER.warn("停止投放计划指令下发失败，planId={}, deviceId={}, mzNumber={}, error={}",
                         planId, deviceId, device.getDeviceCode(), e.getMessage());
             }
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void handleCommandAck(ViitalkDeviceCommandAckRequest request, ViitalkDeviceCommandAckResult ackResult) {
+        if (ackResult == null || StringUtils.isBlank(ackResult.getRequestId())) {
+            return;
+        }
+        String requestId = ackResult.getRequestId().trim();
+        AdDeliveryRecord record = adDeliveryRecordMapper.selectOne(new LambdaQueryWrapper<AdDeliveryRecord>()
+                .eq(AdDeliveryRecord::getRequestId, requestId));
+        if (record == null) {
+            LOGGER.warn("收到ViiTalk设备ACK，但未匹配到下发记录，requestId={}, mzNumber={}, command={}, status={}",
+                    requestId, ackResult.getMzNumber(), ackResult.getCommand(), ackResult.getStatus());
+            return;
+        }
+
+        String status = StringUtils.defaultIfBlank(ackResult.getStatus(), "success").trim().toLowerCase();
+        String message = StringUtils.defaultIfBlank(ackResult.getMessage(), "success".equals(status) ? "设备ACK成功" : "设备ACK失败");
+        Date ackTime = resolveAckTime(request, ackResult);
+        String oldStatus = record.getDeliveryStatus();
+
+        if ("success".equals(status)) {
+            record.setDeliveryStatus("success");
+            record.setResponseMsg(limitMessage(message));
+        } else if ("failed".equals(status) || "fail".equals(status) || "error".equals(status)) {
+            record.setDeliveryStatus("failed");
+            record.setResponseMsg(limitMessage(message));
+        } else {
+            record.setResponseMsg(limitMessage("收到设备ACK，状态：" + status + "，消息：" + message));
+        }
+        record.setAckTime(ackTime);
+        record.setAckMessage(limitMessage(message));
+        record.setDeliveryTime(ackTime);
+        adDeliveryRecordMapper.updateById(record);
+
+        if ("success".equals(record.getDeliveryStatus()) && !"success".equals(oldStatus)) {
+            adReportService.createDemoPlayLog(record.getPlanId(), record.getDeviceId());
+        }
+        if ("failed".equals(record.getDeliveryStatus()) && !"failed".equals(oldStatus)) {
+            adWorkOrderService.createSystemOrder(
+                    "投放计划下发失败",
+                    "计划ID：" + record.getPlanId() + "，设备ID：" + record.getDeviceId() + "，原因：" + record.getResponseMsg(),
+                    "high",
+                    record.getPlanId());
         }
     }
 
@@ -221,9 +273,45 @@ public class AdDeliveryServiceImpl implements AdDeliveryService {
         record.setResponseMsg("已重新加入下发队列");
         record.setRetryCount(record.getRetryCount() == null ? 1 : record.getRetryCount() + 1);
         record.setDeliveryTime(new Date());
-        adDeliveryRecordMapper.updateById(record);
+        adDeliveryRecordMapper.update(null, new LambdaUpdateWrapper<AdDeliveryRecord>()
+                .eq(AdDeliveryRecord::getId, record.getId())
+                .set(AdDeliveryRecord::getDeliveryStatus, record.getDeliveryStatus())
+                .set(AdDeliveryRecord::getResponseMsg, record.getResponseMsg())
+                .set(AdDeliveryRecord::getRetryCount, record.getRetryCount())
+                .set(AdDeliveryRecord::getDeliveryTime, record.getDeliveryTime())
+                .set(AdDeliveryRecord::getRequestId, null)
+                .set(AdDeliveryRecord::getAckTime, null)
+                .set(AdDeliveryRecord::getAckMessage, null));
         dispatchPlan(record.getPlanId(), java.util.Collections.singletonList(record.getDeviceId()), record.getDeliveryType());
         return getDetail(id);
+    }
+
+    private void updatePendingRequest(AdDeliveryRecord record) {
+        adDeliveryRecordMapper.update(null, new LambdaUpdateWrapper<AdDeliveryRecord>()
+                .eq(AdDeliveryRecord::getId, record.getId())
+                .set(AdDeliveryRecord::getDeliveryStatus, record.getDeliveryStatus())
+                .set(AdDeliveryRecord::getRequestId, record.getRequestId())
+                .set(AdDeliveryRecord::getResponseMsg, record.getResponseMsg())
+                .set(AdDeliveryRecord::getDeliveryTime, record.getDeliveryTime())
+                .set(AdDeliveryRecord::getAckTime, null)
+                .set(AdDeliveryRecord::getAckMessage, null));
+    }
+
+    private Date resolveAckTime(ViitalkDeviceCommandAckRequest request, ViitalkDeviceCommandAckResult ackResult) {
+        if (request != null && request.getTimestamp() != null && request.getTimestamp() > 0) {
+            return new Date(request.getTimestamp());
+        }
+        if (ackResult.getAckTime() != null) {
+            return ackResult.getAckTime();
+        }
+        return new Date();
+    }
+
+    private String limitMessage(String message) {
+        if (message == null || message.length() <= MESSAGE_MAX_LENGTH) {
+            return message;
+        }
+        return message.substring(0, MESSAGE_MAX_LENGTH);
     }
 
     private boolean canDeliver(AdDeliveryRecord record, AdDevice device) {

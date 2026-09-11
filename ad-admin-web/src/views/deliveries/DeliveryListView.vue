@@ -2,10 +2,14 @@
   <AppPage :eyebrow="locale.t('page.deviceDelivery')" :title="locale.t('page.deliveries.title')" :stats="stats">
     <el-form class="filter-form" :model="query" inline>
       <el-form-item :label="locale.t('page.deliveries.planId')">
-        <el-input-number v-model="query.planId" :min="1" controls-position="right" />
+        <el-select v-model="query.planId" clearable filterable :loading="planLoading" :placeholder="locale.t('page.deliveries.planPlaceholder')" style="width: 220px">
+          <el-option v-for="plan in planOptions" :key="plan.id" :label="getPlanLabel(plan)" :value="plan.id" />
+        </el-select>
       </el-form-item>
       <el-form-item :label="locale.t('page.deliveries.deviceId')">
-        <el-input-number v-model="query.deviceId" :min="1" controls-position="right" />
+        <el-select v-model="query.deviceId" clearable filterable :loading="deviceLoading" :placeholder="locale.t('page.deliveries.devicePlaceholder')" style="width: 220px">
+          <el-option v-for="device in deviceOptions" :key="device.id" :label="getDeviceLabel(device)" :value="device.id" />
+        </el-select>
       </el-form-item>
       <el-form-item :label="locale.t('page.deliveries.deliveryType')">
         <el-select v-model="query.deliveryType" clearable :placeholder="locale.t('page.deliveries.allTypes')" style="width: 140px">
@@ -25,8 +29,22 @@
 
     <el-table v-loading="loading" :data="records" class="data-table" row-key="id">
       <el-table-column prop="id" :label="locale.t('page.deliveries.recordId')" width="90" />
-      <el-table-column prop="planId" :label="locale.t('page.deliveries.planId')" width="110" />
-      <el-table-column prop="deviceId" :label="locale.t('page.deliveries.deviceId')" width="110" />
+      <el-table-column :label="locale.t('page.deliveries.planId')" min-width="190">
+        <template #default="{ row }">
+          <div class="entity-cell">
+            <strong>{{ getPlanName(row.planId) }}</strong>
+            <span>{{ getPlanCode(row.planId) }}</span>
+          </div>
+        </template>
+      </el-table-column>
+      <el-table-column :label="locale.t('page.deliveries.deviceId')" min-width="190">
+        <template #default="{ row }">
+          <div class="entity-cell">
+            <strong>{{ getDeviceName(row.deviceId) }}</strong>
+            <span>{{ getDeviceCode(row.deviceId) }}</span>
+          </div>
+        </template>
+      </el-table-column>
       <el-table-column :label="locale.t('page.deliveries.type')" width="100">
         <template #default="{ row }">
           <el-tag :type="deliveryTypeMap[row.deliveryType]?.type || 'info'" effect="dark">
@@ -78,8 +96,8 @@
     <el-drawer v-model="drawerVisible" :title="locale.t('page.deliveries.drawerTitle')" size="420px">
       <el-descriptions v-if="current" :column="1" border>
         <el-descriptions-item :label="locale.t('page.deliveries.recordId')">{{ current.id }}</el-descriptions-item>
-        <el-descriptions-item :label="locale.t('page.deliveries.planId')">{{ current.planId }}</el-descriptions-item>
-        <el-descriptions-item :label="locale.t('page.deliveries.deviceId')">{{ current.deviceId }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.deliveries.planId')">{{ getPlanName(current.planId) }} / {{ getPlanCode(current.planId) }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.deliveries.deviceId')">{{ getDeviceName(current.deviceId) }} / {{ getDeviceCode(current.deviceId) }}</el-descriptions-item>
         <el-descriptions-item :label="locale.t('page.deliveries.deliveryType')">{{ getStatusLabel('deliveryType', current.deliveryType, deliveryTypeMap[current.deliveryType]?.label || current.deliveryType) }}</el-descriptions-item>
         <el-descriptions-item :label="locale.t('page.deliveries.deliveryStatus')">
           <el-tag :type="deliveryStatusMap[current.deliveryStatus]?.type || 'info'" effect="dark">
@@ -87,8 +105,11 @@
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item :label="locale.t('page.deliveries.responseMsg')">{{ current.responseMsg || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.deliveries.requestId')">{{ current.requestId || '-' }}</el-descriptions-item>
         <el-descriptions-item :label="locale.t('page.deliveries.retryCount')">{{ current.retryCount || 0 }}</el-descriptions-item>
         <el-descriptions-item :label="locale.t('page.deliveries.deliveryTime')">{{ current.deliveryTime || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.deliveries.ackTime')">{{ current.ackTime || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.deliveries.ackMessage')">{{ current.ackMessage || '-' }}</el-descriptions-item>
       </el-descriptions>
     </el-drawer>
   </AppPage>
@@ -110,13 +131,19 @@ import {
   retryDelivery,
   type AdDeliveryRecord
 } from '@/api/deliveries'
+import { fetchDevices, type AdDevice } from '@/api/devices'
+import { fetchPlans, type AdPlan } from '@/api/plans'
 
 const loading = ref(false)
 const locale = useLocaleStore()
 const user = useUserStore()
 const drawerVisible = ref(false)
+const planLoading = ref(false)
+const deviceLoading = ref(false)
 const records = ref<AdDeliveryRecord[]>([])
 const current = ref<AdDeliveryRecord>()
+const planOptions = ref<AdPlan[]>([])
+const deviceOptions = ref<AdDevice[]>([])
 const total = ref(0)
 
 const query = reactive({
@@ -137,6 +164,58 @@ const stats = computed(() => [
 
 function getStatusLabel(group: string, value: string, fallback: string) {
   return locale.t(`status.${group}.${value}`, fallback)
+}
+
+function getPlanLabel(plan: AdPlan) {
+  return `${plan.planName}（${plan.planCode}）`
+}
+
+function getDeviceLabel(device: AdDevice) {
+  return `${device.deviceName}（${device.deviceCode}）`
+}
+
+function findPlan(planId?: number) {
+  return planOptions.value.find((item) => item.id === planId)
+}
+
+function findDevice(deviceId?: number) {
+  return deviceOptions.value.find((item) => item.id === deviceId)
+}
+
+function getPlanName(planId?: number) {
+  return findPlan(planId)?.planName || (planId ? `#${planId}` : '-')
+}
+
+function getPlanCode(planId?: number) {
+  return findPlan(planId)?.planCode || (planId ? `ID ${planId}` : '-')
+}
+
+function getDeviceName(deviceId?: number) {
+  return findDevice(deviceId)?.deviceName || (deviceId ? `#${deviceId}` : '-')
+}
+
+function getDeviceCode(deviceId?: number) {
+  return findDevice(deviceId)?.deviceCode || (deviceId ? `ID ${deviceId}` : '-')
+}
+
+async function loadPlans() {
+  planLoading.value = true
+  try {
+    const result = await fetchPlans({ page: 1, size: 500 })
+    planOptions.value = result.data.records
+  } finally {
+    planLoading.value = false
+  }
+}
+
+async function loadDevices() {
+  deviceLoading.value = true
+  try {
+    const result = await fetchDevices({ page: 1, size: 500 })
+    deviceOptions.value = result.data.records
+  } finally {
+    deviceLoading.value = false
+  }
 }
 
 async function loadDeliveries() {
@@ -183,5 +262,9 @@ async function handleRetry(id: number) {
   loadDeliveries()
 }
 
-onMounted(loadDeliveries)
+onMounted(() => {
+  loadPlans()
+  loadDevices()
+  loadDeliveries()
+})
 </script>

@@ -10,7 +10,14 @@
         <el-date-picker v-model="query.billMonth" type="month" value-format="YYYY-MM" :placeholder="locale.t('page.bills.monthPlaceholder')" />
       </el-form-item>
       <el-form-item v-if="user.isPlatformScope" :label="locale.t('page.bills.advertiserId')">
-        <el-input-number v-model="query.advertiserId" :min="1" controls-position="right" />
+        <el-select v-model="query.advertiserId" clearable filterable :loading="advertiserLoading" :placeholder="locale.t('page.bills.advertiserPlaceholder')" style="width: 220px">
+          <el-option v-for="advertiser in advertiserOptions" :key="advertiser.id" :label="getAdvertiserLabel(advertiser)" :value="advertiser.id" />
+        </el-select>
+      </el-form-item>
+      <el-form-item v-if="user.isPlatformScope" :label="locale.t('page.bills.agentId')">
+        <el-select v-model="query.agentId" clearable filterable :loading="agentLoading" :placeholder="locale.t('page.bills.agentPlaceholder')" style="width: 220px">
+          <el-option v-for="agent in agentOptions" :key="agent.id" :label="getAgentLabel(agent)" :value="agent.id" />
+        </el-select>
       </el-form-item>
       <el-form-item :label="locale.t('page.bills.status')">
         <el-select v-model="query.status" clearable :placeholder="locale.t('page.bills.allStatus')" style="width: 140px">
@@ -28,7 +35,14 @@
       <el-table-column :label="locale.t('page.bills.billType')" width="120">
         <template #default="{ row }">{{ getStringStatusLabel('billType', row.billType, billTypeMap[row.billType] || row.billType) }}</template>
       </el-table-column>
-      <el-table-column prop="advertiserId" :label="locale.t('page.bills.advertiserId')" width="110" />
+      <el-table-column :label="locale.t('page.bills.subject')" min-width="190">
+        <template #default="{ row }">
+          <div class="entity-cell">
+            <strong>{{ getBillSubjectName(row) }}</strong>
+            <span>{{ getBillSubjectCode(row) }}</span>
+          </div>
+        </template>
+      </el-table-column>
       <el-table-column prop="billMonth" :label="locale.t('page.bills.month')" width="110" />
       <el-table-column :label="locale.t('page.bills.amountTotal')" width="130">
         <template #default="{ row }">¥{{ formatMoney(row.amountTotal) }}</template>
@@ -72,7 +86,7 @@
     <el-drawer v-model="drawerVisible" :title="locale.t('page.bills.drawerTitle')" size="560px">
       <el-descriptions v-if="current" :column="1" border>
         <el-descriptions-item :label="locale.t('page.bills.billNo')">{{ current.billNo }}</el-descriptions-item>
-        <el-descriptions-item :label="locale.t('page.bills.advertiserId')">{{ current.advertiserId || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="locale.t('page.bills.subject')">{{ getBillSubjectName(current) }} / {{ getBillSubjectCode(current) }}</el-descriptions-item>
         <el-descriptions-item :label="locale.t('page.bills.billMonth')">{{ current.billMonth }}</el-descriptions-item>
         <el-descriptions-item :label="locale.t('page.bills.amountTotal')">¥{{ formatMoney(current.amountTotal) }}</el-descriptions-item>
         <el-descriptions-item :label="locale.t('page.bills.paymentVoucherNo')">{{ current.paymentVoucherNo || '-' }}</el-descriptions-item>
@@ -86,8 +100,22 @@
 
       <el-table :data="details" class="data-table detail-table" row-key="id">
         <el-table-column prop="itemName" :label="locale.t('page.bills.itemName')" min-width="180" />
-        <el-table-column prop="adId" :label="locale.t('page.reports.adId')" width="90" />
-        <el-table-column prop="planId" :label="locale.t('page.reports.planId')" width="90" />
+        <el-table-column :label="locale.t('page.reports.adId')" min-width="170">
+          <template #default="{ row }">
+            <div class="entity-cell">
+              <strong>{{ getAdName(row.adId) }}</strong>
+              <span>{{ getAdCode(row.adId) }}</span>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column :label="locale.t('page.reports.planId')" min-width="170">
+          <template #default="{ row }">
+            <div class="entity-cell">
+              <strong>{{ getPlanName(row.planId) }}</strong>
+              <span>{{ getPlanCode(row.planId) }}</span>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column prop="itemCount" :label="locale.t('page.reports.playCount')" width="100" />
         <el-table-column :label="locale.t('page.bills.amount')" width="110">
           <template #default="{ row }">¥{{ formatMoney(row.itemAmount) }}</template>
@@ -133,7 +161,10 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, type FormInstance, type FormRules, type UploadRequestOptions } from 'element-plus'
 import { Refresh, Search } from '@element-plus/icons-vue'
 import AppPage from '@/components/AppPage.vue'
+import { fetchAds, type AdOrder } from '@/api/ads'
 import { uploadFile } from '@/api/files'
+import { fetchAdvertisers, fetchAgents, type Advertiser, type Agent } from '@/api/partners'
+import { fetchPlans, type AdPlan } from '@/api/plans'
 import { useLocaleStore } from '@/stores/locale'
 import { useUserStore } from '@/stores/user'
 import {
@@ -152,10 +183,16 @@ const loading = ref(false)
 const locale = useLocaleStore()
 const user = useUserStore()
 const generating = ref(false)
+const advertiserLoading = ref(false)
+const agentLoading = ref(false)
 const drawerVisible = ref(false)
 const payDialogVisible = ref(false)
 const records = ref<AdBill[]>([])
 const details = ref<AdBillDetail[]>([])
+const advertiserOptions = ref<Advertiser[]>([])
+const agentOptions = ref<Agent[]>([])
+const adOptions = ref<AdOrder[]>([])
+const planOptions = ref<AdPlan[]>([])
 const current = ref<AdBill>()
 const total = ref(0)
 const generateMonth = ref(new Date().toISOString().slice(0, 7))
@@ -171,6 +208,7 @@ const payForm = reactive({
 const query = reactive({
   billMonth: '',
   advertiserId: undefined as number | undefined,
+  agentId: undefined as number | undefined,
   status: '',
   page: 1,
   size: 10
@@ -200,6 +238,86 @@ function formatMoney(value?: number) {
   return Number(value || 0).toFixed(2)
 }
 
+function getAdvertiserLabel(advertiser: Advertiser) {
+  return `${advertiser.advertiserName}（${advertiser.advertiserCode}）`
+}
+
+function getAgentLabel(agent: Agent) {
+  return `${agent.agentName}（${agent.agentCode}）`
+}
+
+function findAdvertiser(advertiserId?: number) {
+  return advertiserOptions.value.find((item) => item.id === advertiserId)
+}
+
+function findAgent(agentId?: number) {
+  return agentOptions.value.find((item) => item.id === agentId)
+}
+
+function findAd(adId?: number) {
+  return adOptions.value.find((item) => item.id === adId)
+}
+
+function findPlan(planId?: number) {
+  return planOptions.value.find((item) => item.id === planId)
+}
+
+function getBillSubjectName(row?: AdBill) {
+  if (!row) {
+    return '-'
+  }
+  if (row.billType === 'agent') {
+    return findAgent(row.agentId)?.agentName || (row.agentId ? `#${row.agentId}` : '-')
+  }
+  return findAdvertiser(row.advertiserId)?.advertiserName || (row.advertiserId ? `#${row.advertiserId}` : '-')
+}
+
+function getBillSubjectCode(row?: AdBill) {
+  if (!row) {
+    return '-'
+  }
+  if (row.billType === 'agent') {
+    return findAgent(row.agentId)?.agentCode || (row.agentId ? `ID ${row.agentId}` : '-')
+  }
+  return findAdvertiser(row.advertiserId)?.advertiserCode || (row.advertiserId ? `ID ${row.advertiserId}` : '-')
+}
+
+function getAdName(adId?: number) {
+  return findAd(adId)?.adName || (adId ? `#${adId}` : '-')
+}
+
+function getAdCode(adId?: number) {
+  return findAd(adId)?.adCode || (adId ? `ID ${adId}` : '-')
+}
+
+function getPlanName(planId?: number) {
+  return findPlan(planId)?.planName || (planId ? `#${planId}` : '-')
+}
+
+function getPlanCode(planId?: number) {
+  return findPlan(planId)?.planCode || (planId ? `ID ${planId}` : '-')
+}
+
+async function loadReferenceData() {
+  advertiserLoading.value = true
+  agentLoading.value = true
+  try {
+    const [advertisers, agents, ads, plans] = await Promise.all([
+      fetchAdvertisers({ page: 1, size: 500 }),
+      fetchAgents({ page: 1, size: 500 }),
+      fetchAds({ page: 1, size: 500 }),
+      fetchPlans({ page: 1, size: 500 })
+    ])
+    advertiserOptions.value = advertisers.data.records
+    agentOptions.value = agents.data.records
+    adOptions.value = ads.data.records
+    planOptions.value = plans.data.records
+  } finally {
+    advertiserLoading.value = false
+    agentLoading.value = false
+  }
+}
+
 async function loadBills() {
   loading.value = true
   try {
@@ -214,6 +332,7 @@ async function loadBills() {
 function resetQuery() {
   query.billMonth = ''
   query.advertiserId = undefined
+  query.agentId = undefined
   query.status = ''
   query.page = 1
   loadBills()
@@ -300,7 +419,10 @@ async function handlePay() {
   }
 }
 
-onMounted(loadBills)
+onMounted(() => {
+  loadReferenceData()
+  loadBills()
+})
 </script>
 
 <style scoped>

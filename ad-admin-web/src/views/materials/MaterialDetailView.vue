@@ -30,14 +30,15 @@
         <el-descriptions :column="2" border>
           <el-descriptions-item :label="locale.t('page.materials.code')">{{ material.materialCode }}</el-descriptions-item>
           <el-descriptions-item :label="locale.t('page.materials.name')">{{ material.materialName }}</el-descriptions-item>
-          <el-descriptions-item :label="locale.t('page.materials.adOwnerId')">{{ material.adId }}</el-descriptions-item>
+          <el-descriptions-item :label="locale.t('page.materials.adOwnerId')">{{ getAdText(material.adId) }}</el-descriptions-item>
           <el-descriptions-item :label="locale.t('page.materials.type')">{{ getMaterialTypeLabel(material.materialType) }}</el-descriptions-item>
           <el-descriptions-item :label="locale.t('page.materials.status')">
             <el-tag :type="materialStatusMap[material.status]?.type || 'info'" effect="dark">
               {{ getStatusLabel(material.status) }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item :label="locale.t('page.materials.uploader')">{{ material.uploaderId || '-' }}</el-descriptions-item>
+          <el-descriptions-item :label="locale.t('page.materials.uploader')">{{ getUserText(material.uploaderId) }}</el-descriptions-item>
+          <el-descriptions-item :label="locale.t('page.materials.reviewUser')">{{ getUserText(material.reviewUserId) }}</el-descriptions-item>
           <el-descriptions-item :label="locale.t('page.materials.size')">
             {{ material.width && material.height ? `${material.width}x${material.height}` : '-' }}
           </el-descriptions-item>
@@ -74,6 +75,8 @@ import {
   submitMaterial,
   type AdMaterial
 } from '@/api/materials'
+import { fetchAdDetail, type AdOrder } from '@/api/ads'
+import { fetchSystemUsers, type SysUser } from '@/api/system'
 import { useLocaleStore } from '@/stores/locale'
 
 const route = useRoute()
@@ -82,13 +85,15 @@ const locale = useLocaleStore()
 const user = useUserStore()
 const loading = ref(false)
 const material = ref<AdMaterial>()
+const ad = ref<AdOrder>()
+const userOptions = ref<SysUser[]>([])
 const id = computed(() => Number(route.params.id))
 
 const stats = computed(() => [
   { label: locale.t('page.materials.currentStatus'), value: material.value ? getStatusLabel(material.value.status) : '-' },
   { label: locale.t('page.materials.type'), value: material.value ? getMaterialTypeLabel(material.value.materialType) : '-' },
-  { label: locale.t('page.materials.materialOwner'), value: material.value?.adId || '-' },
-  { label: locale.t('page.materials.reviewUser'), value: material.value?.reviewUserId || '-' }
+  { label: locale.t('page.materials.materialOwner'), value: getAdName(material.value?.adId) },
+  { label: locale.t('page.materials.reviewUser'), value: getUserName(material.value?.reviewUserId) }
 ])
 
 function getMaterialTypeLabel(value: string) {
@@ -99,11 +104,59 @@ function getStatusLabel(value: string) {
   return locale.t(`status.material.${value}`, materialStatusMap[value]?.label || value)
 }
 
+function getAdName(adId?: number) {
+  const current = ad.value
+  if (current && current.id === adId) {
+    return current.adName
+  }
+  return adId ? `#${adId}` : '-'
+}
+
+function getAdText(adId?: number) {
+  const current = ad.value
+  if (current && current.id === adId) {
+    return `${current.adName} / ${current.adCode}`
+  }
+  return adId ? `#${adId}` : '-'
+}
+
+function findUser(userId?: number) {
+  return userOptions.value.find((item) => item.id === userId)
+}
+
+function getUserName(userId?: number) {
+  return findUser(userId)?.realName || (userId ? `#${userId}` : '-')
+}
+
+function getUserText(userId?: number) {
+  const item = findUser(userId)
+  return item ? `${item.realName} / ${item.username}` : (userId ? `#${userId}` : '-')
+}
+
+async function loadUsers() {
+  try {
+    const result = await fetchSystemUsers({ page: 1, size: 500 })
+    userOptions.value = result.data.records
+  } catch {
+    userOptions.value = []
+  }
+}
+
+async function loadAd(adId: number) {
+  try {
+    const result = await fetchAdDetail(adId)
+    ad.value = result.data
+  } catch {
+    ad.value = undefined
+  }
+}
+
 async function loadDetail() {
   loading.value = true
   try {
     const result = await fetchMaterialDetail(id.value)
     material.value = result.data
+    await Promise.all([loadAd(result.data.adId), loadUsers()])
   } finally {
     loading.value = false
   }
