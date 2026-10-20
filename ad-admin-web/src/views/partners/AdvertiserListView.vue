@@ -74,7 +74,7 @@
       />
     </div>
 
-    <el-drawer v-model="drawerVisible" :title="locale.t('page.partners.advertiserDrawer')" size="460px">
+    <el-drawer v-model="drawerVisible" :title="locale.t('page.partners.advertiserDrawer')" size="560px">
       <el-descriptions v-if="current" :column="1" border>
         <el-descriptions-item :label="locale.t('page.partners.code')">{{ current.advertiserCode }}</el-descriptions-item>
         <el-descriptions-item :label="locale.t('page.partners.name')">{{ current.advertiserName }}</el-descriptions-item>
@@ -86,6 +86,31 @@
         <el-descriptions-item :label="locale.t('page.partners.agentId')">{{ getAgentText(current.agentId) }}</el-descriptions-item>
         <el-descriptions-item :label="locale.t('page.partners.remark')">{{ current.remark || '-' }}</el-descriptions-item>
       </el-descriptions>
+      <section class="wallet-panel">
+        <div class="panel-head">
+          <h3>{{ locale.t('page.wallet.accountOverview') }}</h3>
+          <el-button v-if="user.hasPermission('wallet:recharge:create') && !walletAccount" link type="primary" :loading="walletLoading" @click="handleEnsureWallet">
+            {{ locale.t('page.wallet.ensureAccount') }}
+          </el-button>
+        </div>
+        <el-skeleton v-if="walletLoading" :rows="3" animated />
+        <el-descriptions v-else-if="walletAccount" :column="2" border>
+          <el-descriptions-item :label="locale.t('page.wallet.availableBalance')">¥{{ formatMoney(walletAccount.availableBalance) }}</el-descriptions-item>
+          <el-descriptions-item :label="locale.t('page.wallet.frozenBalance')">¥{{ formatMoney(walletAccount.frozenBalance) }}</el-descriptions-item>
+          <el-descriptions-item :label="locale.t('page.wallet.totalRecharge')">¥{{ formatMoney(walletAccount.totalRecharge) }}</el-descriptions-item>
+          <el-descriptions-item :label="locale.t('page.wallet.totalConsumed')">¥{{ formatMoney(walletAccount.totalConsumed) }}</el-descriptions-item>
+        </el-descriptions>
+        <el-empty v-else :description="locale.t('page.wallet.accountEmpty')" />
+        <el-table :data="walletCharges" class="data-table compact-table" row-key="id">
+          <el-table-column prop="chargeNo" :label="locale.t('page.wallet.chargeNo')" min-width="160" show-overflow-tooltip />
+          <el-table-column :label="locale.t('page.wallet.chargeAmount')" width="110">
+            <template #default="{ row }">¥{{ formatMoney(row.amount) }}</template>
+          </el-table-column>
+          <el-table-column :label="locale.t('page.bills.status')" width="100">
+            <template #default="{ row }">{{ locale.t(`status.playCharge.${row.status}`, row.status) }}</template>
+          </el-table-column>
+        </el-table>
+      </section>
     </el-drawer>
 
     <el-dialog v-model="dialogVisible" :title="editingId ? locale.t('page.partners.editAdvertiser') : locale.t('page.partners.createAdvertiser')" width="560px">
@@ -147,6 +172,7 @@ import {
   type Advertiser,
   type AdvertiserPayload
 } from '@/api/partners'
+import { ensureWalletAccount, fetchPlayCharges, fetchWalletAccounts, type PlayCharge, type WalletAccount } from '@/api/wallet'
 import { isValidEmail, isValidPhone } from '@/utils/validators'
 
 const loading = ref(false)
@@ -159,9 +185,12 @@ const editingId = ref<number>()
 const records = ref<Advertiser[]>([])
 const current = ref<Advertiser>()
 const agentOptions = ref<Agent[]>([])
+const walletAccount = ref<WalletAccount>()
+const walletCharges = ref<PlayCharge[]>([])
 const total = ref(0)
 const formRef = ref<FormInstance>()
 const agentLoading = ref(false)
+const walletLoading = ref(false)
 
 const query = reactive({ keyword: '', sourceType: '', status: '', page: 1, size: 10 })
 const form = reactive<AdvertiserPayload>({
@@ -218,6 +247,10 @@ function getAgentText(agentId?: number) {
   return agent ? `${agent.agentName} / ${agent.agentCode}` : (agentId ? `#${agentId}` : '-')
 }
 
+function formatMoney(value?: number) {
+  return Number(value || 0).toFixed(2)
+}
+
 function validatePhone(_rule: unknown, value: string, callback: (error?: Error) => void) {
   callback(isValidPhone(value) ? undefined : new Error(locale.t('common.invalidPhone')))
 }
@@ -270,7 +303,41 @@ function openEdit(row: Advertiser) {
 
 function openDetail(row: Advertiser) {
   current.value = row
+  if (user.hasPermission('wallet:view')) {
+    loadWallet(row.id)
+  }
   drawerVisible.value = true
+}
+
+async function loadWallet(ownerId: number) {
+  walletLoading.value = true
+  walletAccount.value = undefined
+  walletCharges.value = []
+  try {
+    const [accounts, charges] = await Promise.all([
+      fetchWalletAccounts({ ownerType: 'advertiser', ownerId, page: 1, size: 1 }),
+      user.hasPermission('wallet:charge:view')
+        ? fetchPlayCharges({ ownerType: 'advertiser', ownerId, page: 1, size: 5 })
+        : Promise.resolve({ data: { records: [] } })
+    ])
+    walletAccount.value = accounts.data.records[0]
+    walletCharges.value = charges.data.records
+  } finally {
+    walletLoading.value = false
+  }
+}
+
+async function handleEnsureWallet() {
+  if (!current.value) {
+    return
+  }
+  walletLoading.value = true
+  try {
+    walletAccount.value = (await ensureWalletAccount('advertiser', current.value.id)).data
+    ElMessage.success(locale.t('page.wallet.accountEnsured'))
+  } finally {
+    walletLoading.value = false
+  }
 }
 
 async function handleSave() {
@@ -321,5 +388,27 @@ watch(
 <style scoped>
 .wide-control {
   width: 100%;
+}
+
+.wallet-panel {
+  margin-top: 18px;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.panel-head h3 {
+  margin: 0;
+  color: #f4fbff;
+  font-size: 16px;
+}
+
+.compact-table {
+  margin-top: 12px;
 }
 </style>

@@ -18,6 +18,7 @@ import com.mrd.ad.business.report.dto.ReportOverview;
 import com.mrd.ad.business.report.mapper.AdPlayLogMapper;
 import com.mrd.ad.business.report.service.AdReportService;
 import com.mrd.ad.business.system.service.SysDataScopeService;
+import com.mrd.ad.business.wallet.service.AdWalletService;
 import com.mrd.ad.common.core.PageResult;
 import com.mrd.ad.common.exception.BusinessException;
 import org.apache.commons.lang3.StringUtils;
@@ -41,6 +42,7 @@ public class AdReportServiceImpl implements AdReportService {
     private final AdPlanMaterialMapper adPlanMaterialMapper;
     private final AdPlanDeviceMapper adPlanDeviceMapper;
     private final AdDeviceMapper adDeviceMapper;
+    private final AdWalletService adWalletService;
     private final SysDataScopeService dataScopeService;
 
     public AdReportServiceImpl(AdPlayLogMapper adPlayLogMapper,
@@ -48,12 +50,14 @@ public class AdReportServiceImpl implements AdReportService {
                                AdPlanMaterialMapper adPlanMaterialMapper,
                                AdPlanDeviceMapper adPlanDeviceMapper,
                                AdDeviceMapper adDeviceMapper,
+                               AdWalletService adWalletService,
                                SysDataScopeService dataScopeService) {
         this.adPlayLogMapper = adPlayLogMapper;
         this.adPlanMapper = adPlanMapper;
         this.adPlanMaterialMapper = adPlanMaterialMapper;
         this.adPlanDeviceMapper = adPlanDeviceMapper;
         this.adDeviceMapper = adDeviceMapper;
+        this.adWalletService = adWalletService;
         this.dataScopeService = dataScopeService;
     }
 
@@ -124,6 +128,7 @@ public class AdReportServiceImpl implements AdReportService {
         log.setSourceType("device");
         log.setCreateTime(now);
         adPlayLogMapper.insert(log);
+        adWalletService.chargePlayLog(log);
 
         AdPlayReportResult result = new AdPlayReportResult();
         result.setLogId(log.getId());

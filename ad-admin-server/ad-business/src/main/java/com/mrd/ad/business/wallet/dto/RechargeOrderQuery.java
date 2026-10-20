@@ -6,6 +6,7 @@ public class RechargeOrderQuery {
     private Long ownerId;
     private String payMethod;
     private String status;
+    private String rechargeNo;
     private long page = 1;
     private long size = 10;
 
@@ -39,6 +40,14 @@ public class RechargeOrderQuery {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getRechargeNo() {
+        return rechargeNo;
+    }
+
+    public void setRechargeNo(String rechargeNo) {
+        this.rechargeNo = rechargeNo;
     }
 
     public long getPage() {

@@ -225,7 +225,15 @@ public class SysAuthServiceImpl implements SysAuthService {
         return getMenus(roles).stream()
                 .map(SysMenu::getPermissionCode)
                 .filter(StringUtils::isNotBlank)
-                .anyMatch(permission::equals);
+                .anyMatch(menuPermission -> {
+                    String[] requiredPermissions = permission.split(",");
+                    for (String requiredPermission : requiredPermissions) {
+                        if (menuPermission.equals(StringUtils.trim(requiredPermission))) {
+                            return true;
+                        }
+                    }
+                    return false;
+                });
     }
 
     @Override

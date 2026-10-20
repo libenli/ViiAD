@@ -58,7 +58,7 @@
         <el-descriptions-item :label="locale.t('page.plans.createTime')">{{ plan.createTime || '-' }}</el-descriptions-item>
       </el-descriptions>
 
-      <section class="receipt-section">
+      <section v-if="user.hasPermission('wallet:charge:view')" class="receipt-section">
         <div class="receipt-head">
           <div>
             <!-- <p class="eyebrow">{{ locale.t('page.plans.receiptEyebrow') }}</p> -->
@@ -107,6 +107,43 @@
           </template>
         </el-table>
       </section>
+
+      <section class="receipt-section">
+        <div class="receipt-head">
+          <div>
+            <h3>{{ locale.t('page.wallet.planChargeTitle') }}</h3>
+          </div>
+          <span>{{ locale.t('page.wallet.planChargeSummary').replace('{amount}', formatMoney(planChargeAmount)).replace('{count}', String(planCharges.length)) }}</span>
+        </div>
+        <el-table :data="planCharges" class="data-table" row-key="id">
+          <el-table-column prop="chargeNo" :label="locale.t('page.wallet.chargeNo')" min-width="180" show-overflow-tooltip />
+          <el-table-column :label="locale.t('page.wallet.ownerType')" width="110">
+            <template #default="{ row }">{{ locale.t(`status.walletOwner.${row.ownerType}`, row.ownerType) }}</template>
+          </el-table-column>
+          <el-table-column prop="ownerId" :label="locale.t('page.wallet.owner')" width="110" />
+          <el-table-column :label="locale.t('page.wallet.quantity')" width="110">
+            <template #default="{ row }">{{ formatMoney(row.quantity) }}</template>
+          </el-table-column>
+          <el-table-column :label="locale.t('page.wallet.unitPrice')" width="110">
+            <template #default="{ row }">¥{{ formatMoney(row.unitPrice) }}</template>
+          </el-table-column>
+          <el-table-column :label="locale.t('page.wallet.chargeAmount')" width="120">
+            <template #default="{ row }">¥{{ formatMoney(row.amount) }}</template>
+          </el-table-column>
+          <el-table-column :label="locale.t('page.bills.status')" width="110">
+            <template #default="{ row }">
+              <el-tag :type="getChargeStatusType(row.status)" effect="dark">
+                {{ locale.t(`status.playCharge.${row.status}`, row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="failReason" :label="locale.t('page.wallet.failReason')" min-width="180" show-overflow-tooltip />
+          <el-table-column prop="createTime" :label="locale.t('page.reports.createTime')" min-width="170" />
+          <template #empty>
+            <el-empty :description="locale.t('page.wallet.chargeEmpty')" />
+          </template>
+        </el-table>
+      </section>
     </template>
     <el-empty v-else :description="locale.t('page.plans.planNotFound')" />
   </AppPage>
@@ -135,6 +172,7 @@ import { fetchDevices, onlineStatusMap, type AdDevice } from '@/api/devices'
 import { fetchMaterials, type AdMaterial } from '@/api/materials'
 import { fetchSystemUsers, type SysUser } from '@/api/system'
 import { useLocaleStore } from '@/stores/locale'
+import { fetchPlayCharges, type PlayCharge } from '@/api/wallet'
 
 const route = useRoute()
 const router = useRouter()
@@ -148,13 +186,20 @@ const materialOptions = ref<AdMaterial[]>([])
 const deviceOptions = ref<AdDevice[]>([])
 const deviceReceipts = ref<AdPlanDeviceReceipt[]>([])
 const userOptions = ref<SysUser[]>([])
+const planCharges = ref<PlayCharge[]>([])
 
 const stats = computed(() => [
   { label: locale.t('page.plans.currentSchedule'), value: plan.value ? getScheduleLabel(plan.value.scheduleStatus) : '-' },
   { label: locale.t('page.plans.deliveryStatus'), value: plan.value ? getDeliveryLabel(plan.value.deliveryStatus) : '-' },
   { label: locale.t('page.plans.materialCount'), value: plan.value?.materialIds?.length || 0 },
-  { label: locale.t('page.plans.deviceCount'), value: plan.value?.deviceIds?.length || 0 }
+  user.hasPermission('wallet:charge:view')
+    ? { label: locale.t('page.wallet.chargedAmount'), value: `¥${formatMoney(planChargeAmount.value)}` }
+    : { label: locale.t('page.plans.deviceCount'), value: plan.value?.deviceIds?.length || 0 }
 ])
+
+const planChargeAmount = computed(() => planCharges.value
+  .filter((item) => item.status === 'success')
+  .reduce((sum, item) => sum + Number(item.amount || 0), 0))
 
 function getScheduleLabel(value: string) {
   return locale.t(`status.schedule.${value}`, scheduleStatusMap[value]?.label || value)
@@ -203,6 +248,20 @@ function getPlayStatusType(value?: string) {
 
 function getPlayStatusLabel(value?: string) {
   return locale.t(`status.playStatus.${value || 'not_started'}`, value || '-')
+}
+
+function getChargeStatusType(value?: string) {
+  if (value === 'success') {
+    return 'success'
+  }
+  if (value === 'failed') {
+    return 'danger'
+  }
+  return 'info'
+}
+
+function formatMoney(value?: number) {
+  return Number(value || 0).toFixed(2)
 }
 
 function getAdText(adId?: number) {
@@ -275,6 +334,19 @@ async function loadDeviceReceipts(planId: number) {
   }
 }
 
+async function loadPlanCharges(planId: number) {
+  if (!user.hasPermission('wallet:charge:view')) {
+    planCharges.value = []
+    return
+  }
+  try {
+    const result = await fetchPlayCharges({ planId, page: 1, size: 200 })
+    planCharges.value = result.data.records
+  } catch {
+    planCharges.value = []
+  }
+}
+
 const canEdit = computed(() => Boolean(plan.value && ['draft', 'scheduled'].includes(plan.value.scheduleStatus) && !['live', 'finished'].includes(plan.value.deliveryStatus)))
 const canStart = computed(() => plan.value?.scheduleStatus === 'scheduled' && ['not_started', 'paused'].includes(plan.value.deliveryStatus))
 const canFinish = computed(() => plan.value?.scheduleStatus === 'scheduled' && ['not_started', 'live', 'paused'].includes(plan.value.deliveryStatus))
@@ -284,7 +356,7 @@ async function loadDetail() {
   try {
     const result = await fetchPlanDetail(Number(route.params.id))
     plan.value = result.data
-    await Promise.all([loadReferenceData(result.data.adId), loadDeviceReceipts(result.data.id)])
+    await Promise.all([loadReferenceData(result.data.adId), loadDeviceReceipts(result.data.id), loadPlanCharges(result.data.id)])
   } finally {
     loading.value = false
   }
@@ -304,7 +376,7 @@ async function handleAction(action: 'schedule' | 'start' | 'pause' | 'finish') {
     }
     const result = await actionMap[action].request(plan.value.id)
     plan.value = result.data
-    await loadDeviceReceipts(result.data.id)
+    await Promise.all([loadDeviceReceipts(result.data.id), loadPlanCharges(result.data.id)])
     ElMessage.success(actionMap[action].message)
   } finally {
     acting.value = false

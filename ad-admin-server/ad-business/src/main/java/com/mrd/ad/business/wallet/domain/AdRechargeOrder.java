@@ -15,8 +15,12 @@ public class AdRechargeOrder extends BaseEntity {
     private Long ownerId;
     private String payMethod;
     private BigDecimal amount;
+    private BigDecimal paidAmount;
     private String status;
     private String transactionNo;
+    private String prepayId;
+    private String qrCodeUrl;
+    private String payMessage;
     private String voucherNo;
     private String voucherUrl;
     private String remark;
@@ -72,6 +76,14 @@ public class AdRechargeOrder extends BaseEntity {
         this.amount = amount;
     }
 
+    public BigDecimal getPaidAmount() {
+        return paidAmount;
+    }
+
+    public void setPaidAmount(BigDecimal paidAmount) {
+        this.paidAmount = paidAmount;
+    }
+
     public String getStatus() {
         return status;
     }
@@ -86,6 +98,30 @@ public class AdRechargeOrder extends BaseEntity {
 
     public void setTransactionNo(String transactionNo) {
         this.transactionNo = transactionNo;
+    }
+
+    public String getPrepayId() {
+        return prepayId;
+    }
+
+    public void setPrepayId(String prepayId) {
+        this.prepayId = prepayId;
+    }
+
+    public String getQrCodeUrl() {
+        return qrCodeUrl;
+    }
+
+    public void setQrCodeUrl(String qrCodeUrl) {
+        this.qrCodeUrl = qrCodeUrl;
+    }
+
+    public String getPayMessage() {
+        return payMessage;
+    }
+
+    public void setPayMessage(String payMessage) {
+        this.payMessage = payMessage;
     }
 
     public String getVoucherNo() {

@@ -22,7 +22,7 @@ public class FileUploadController {
     }
 
     @OperLog(module = "文件上传", businessType = "UPLOAD")
-    @RequiresPermission("material:edit")
+    @RequiresPermission("material:edit,wallet:recharge:create,bill:pay")
     @PostMapping("/upload")
     public ApiResult<FileUploadResult> upload(@RequestParam("file") MultipartFile file,
                                               @RequestParam(value = "folder", required = false) String folder) {

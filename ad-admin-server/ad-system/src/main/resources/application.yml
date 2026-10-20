@@ -102,6 +102,34 @@ mrd:
     password: ${MRD_MQ_PASSWORD:Mysher.com.viitalk}
     viiad-c2s-rule: '{"exchangeType":"direct","exchange":"mysher.exchange.direct.command.c2s","binding":"vii_ad.c2s","queueName":"mysher.server.viiad.c2s"}'
     only-china-device: ${MRD_MQ_ONLY_CHINA_DEVICE:true}
-
-
-
+  pay:
+    wechat:
+      enabled: ${MRD_PAY_WECHAT_ENABLED:true}
+      app-id: ${MRD_PAY_WECHAT_APP_ID:wx0c5a69619728dda7}
+      mch-id: ${MRD_PAY_WECHAT_MCH_ID:1748437313}
+      api-key: ${MRD_PAY_WECHAT_API_KEY:8ff1c1743cfc4585ae35810059cb9d36}
+      notify-url: ${MRD_PAY_WECHAT_NOTIFY_URL:https://testad.viitalk.com/api/pay/notify/wechat}
+      unified-order-url: ${MRD_PAY_WECHAT_UNIFIED_ORDER_URL:https://api.mch.weixin.qq.com/pay/unifiedorder}
+      refund-enabled: ${MRD_PAY_WECHAT_REFUND_ENABLED:true}
+      refund-url: ${MRD_PAY_WECHAT_REFUND_URL:https://api.mch.weixin.qq.com/secapi/pay/refund}
+      refund-query-url: ${MRD_PAY_WECHAT_REFUND_QUERY_URL:https://api.mch.weixin.qq.com/pay/refundquery}
+      refund-cert-path: ${MRD_PAY_WECHAT_REFUND_CERT_PATH:/opt/mysher/apiclient_cert.p12}
+      refund-cert-password: ${MRD_PAY_WECHAT_REFUND_CERT_PASSWORD:1748437313}
+      body-prefix: ${MRD_PAY_WECHAT_BODY_PREFIX:ViiAD充值}
+    alipay:
+      enabled: ${MRD_PAY_ALIPAY_ENABLED:true}
+      app-id: ${MRD_PAY_ALIPAY_APP_ID:2021003125698900}
+      merchant-private-key: ${MRD_PAY_ALIPAY_PRIVATE_KEY:MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCifjybmk2TmwsXaS37ADQo0u1lgjdwEiPYA+q1CHGZRLSp2hcpWuQU1C7bBdi63lZUGBAJ9Tv5zdyUVKLL8J57jMUi6Y7ZCkT397EP/zW9N23h5r2bu6mJG5G/SKBRhPIx7duu+AQe3AW+mHD1VTPxqJ6BLe8DXkCOHuC7hqVPQkwAftvoFSSnvZE+y1JI9T1H/iyQQbtNHpDaKzLdNlZV4R+9wQWGBkW/osZlRma0Pif1OzGdrhVV+4L9VjQXtFuzqMOgO2UbkogC3AlZrv/fSClBdcKpEFzCgXEHwqMONHyBbnAePuCyqhveNQDRhir4uQrE7VzhWmm9FXnAISUXAgMBAAECggEAQzWZlfatrabMYKOFfDMqX9RWkszYZ0dpgfikxLo4Wl+7piFpwRYyDpdwxfDWIvzBkkjdoXDInNtUKBoVt+rPcmTYSUd3aThBLJtLpkU2EgxyK6THujlVtzsq/oZooS8vCg3K9sTo12bEDYB6AE98i7Dl1qKMIMWESARnicj4aR5mnNyv4mrI3tsiT80nxP4aYUdw/5fCmWgirAk3qCBCMmWrklIlEYs51gpwS7l6tpFjEaN18OLIGq+QWwGh58un9Rjbd7mJextO0K32quYi4eNPvb9v9Q9iAb8EmX5RlLS0rB0SiiCBhn7HRwslWlQwNoVfrjKveb2vz/QxTn0VoQKBgQDcZDIX4mGqCgijdJVFYMdKP7EJL7iT3SorUlNMmfMsHIJz0KHIp6l3wRKo8S+VA9Y2LZW3rMZYOH4QHkeDB6SX2L1lZTJ1+O7ft1m5aUhyQ2M4PyrCZZzgE7okjOTsbodQtEMSh0bdxP4KDa2KIXkvj4d/CKAbdZZhUBC+7m6tUQKBgQC8v0JJAzEtN0ky7jBGU0365U2nrbSV3+Dw7FuDxHefpTGfrWpEYStaHQILghsybvxyOmynyeT7LVcdaob9qNBZvnwv9Ww3sBqReALySwl764ZVm0GzkEjkyvMsLSusYG+0o1gWIlWTtKyl16VehBCL+7ZnJNWmUTUhM3T4SyJx5wKBgBtggux+nZ0uw+XyHHzSyc7KXKaEfAw6I/vfrSNN2Gw5WmcimoY/dYi/vh6oXz3GjTyLqxZ26uiYk+hSqpV3RJXsQZKv4HXRJ3M45ndmwa4X+uJIznn5f2RCbxQNQH6yODLpQY+yqDXyO5BqJI2NHO2wiadZHfJrR/PsqzfcjHkRAoGBAJjk1W0PiOZ3wnPfPnu5P5Hd7enGbGJ72FtRG1DB9aT8zBXtBAggLl3w4Zcw7ZcNELH3Yc0JXtOZBthtUqxn816/TxoKVH9HyD3OWZSr9CLNxyPRgIdUebfcLt+6N4aLF/Hb358OcQQVd0VgSjUmBcFfRYKH9Aml/sPGSxpWwrBBAoGAFySMn2V0dN73VpI9T9Y2FZBH3V6jpLujQPM+yQWSXoGiWCi8GMcj1W0demDMaMC9CdkBxnd93myrdHcYDhL3FoRSsMfDj1OTMmXqZUR6OGy2nz+GmvJra3WfDM5EKYXy4aTqnQZFNrBzthnm0Zl69T9ypBJVx0VanzFZ7Jr7Rgo=}
+      alipay-public-key: ${MRD_PAY_ALIPAY_PUBLIC_KEY:MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApPCEukljD82ZgIN5sIXO5hml09WhUdCO9gVidd2H52bO+wr5VnDcObg8EY+Dbtp6pydUW1VbeYDaX1mGW0U94MX5f7IIX3MlJ7zPAiCPv/BHTmgF+ON3IVpKh1DOPB5AELfsIoU4ckOq1zhq1vxIsY08mZHzU/XUlI+simXL2eZcdi+13Ipdrj1QTcbtPebnBj5FubZMxl1wO0kBl8Y1l6prgeUsiJ1+bZMASxCprgLigHZ98MsHCvnqfMFaCz6RKvHjjy+qzFVOMek4cNusbSUigPXfkOY+SFCbk41fpuVcmra9+oqNlSWx6D7XsyJXmGQIjd1CprWnZjTeCbEGRQIDAQAB}
+      notify-url: ${MRD_PAY_ALIPAY_NOTIFY_URL:https://testad.viitalk.com/api/pay/notify/alipay}
+      gateway-url: ${MRD_PAY_ALIPAY_GATEWAY_URL:https://openapi.alipay.com/gateway.do}
+      refund-enabled: ${MRD_PAY_ALIPAY_REFUND_ENABLED:true}
+      charset: ${MRD_PAY_ALIPAY_CHARSET:UTF-8}
+      sign-type: ${MRD_PAY_ALIPAY_SIGN_TYPE:RSA2}
+      subject-prefix: ${MRD_PAY_ALIPAY_SUBJECT_PREFIX:ViiAD充值}
+    refund-sync:
+      enabled: ${MRD_PAY_REFUND_SYNC_ENABLED:true}
+      initial-delay-ms: ${MRD_PAY_REFUND_SYNC_INITIAL_DELAY_MS:15000}
+      fixed-delay-ms: ${MRD_PAY_REFUND_SYNC_FIXED_DELAY_MS:60000}
+      batch-size: ${MRD_PAY_REFUND_SYNC_BATCH_SIZE:50}
+      max-retries: ${MRD_PAY_REFUND_SYNC_MAX_RETRIES:20}

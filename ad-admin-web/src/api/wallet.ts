@@ -42,6 +42,80 @@ export interface RechargeOrder {
   createTime?: string
 }
 
+
+export interface RefundOrder {
+  id: number
+  refundNo: string
+  rechargeOrderId: number
+  rechargeNo: string
+  accountId: number
+  ownerType: WalletOwnerType
+  ownerId: number
+  payMethod: RechargePayMethod
+  refundAmount: number
+  status: string
+  refundReason?: string
+  auditUserId?: number
+  auditTime?: string
+  auditRemark?: string
+  transactionNo?: string
+  refundTransactionNo?: string
+  refundTime?: string
+  failReason?: string
+  reservedAmount?: number
+  gatewayRefundStatus?: string
+  reconcileStatus?: string
+  reconcileMessage?: string
+  lastSyncTime?: string
+  syncRetryCount?: number
+  createTime?: string
+}
+
+export interface RefundReconcileAction {
+  id: number
+  refundOrderId: number
+  refundNo: string
+  actionType: 'sync' | 'confirm_refunded' | 'release_reservation'
+  reason: string
+  operatorUserId: number
+  operatorName?: string
+  gatewayRefundStatus?: string
+  refundStatusBefore?: string
+  refundStatusAfter?: string
+  reconcileStatusBefore?: string
+  reconcileStatusAfter?: string
+  availableBalanceBefore?: number
+  availableBalanceAfter?: number
+  frozenBalanceBefore?: number
+  frozenBalanceAfter?: number
+  reservedAmountBefore?: number
+  reservedAmountAfter?: number
+  resultStatus: string
+  resultMessage?: string
+  createTime?: string
+}
+
+export interface RefundReconcileActionPayload {
+  actionType: 'confirm_refunded' | 'release_reservation'
+  reason: string
+  refundTransactionNo?: string
+}
+export interface PayCallbackLog {
+  id: number
+  payMethod: RechargePayMethod
+  notifyType: string
+  rechargeNo?: string
+  rechargeOrderId?: number
+  transactionNo?: string
+  tradeStatus?: string
+  paidAmount?: number
+  callbackStatus: string
+  rawPayload?: string
+  responseBody?: string
+  failReason?: string
+  processedTime?: string
+  createTime?: string
+}
 export interface WalletTransaction {
   id: number
   transactionNo: string
@@ -107,6 +181,7 @@ export interface RechargeOrderQuery {
   ownerId?: number
   payMethod?: string
   status?: string
+  rechargeNo?: string
   page?: number
   size?: number
 }
@@ -135,6 +210,38 @@ export interface RechargePaymentResult {
   message?: string
 }
 
+
+export interface RefundOrderQuery {
+  ownerType?: WalletOwnerType
+  ownerId?: number
+  payMethod?: string
+  status?: string
+  refundNo?: string
+  rechargeNo?: string
+  reconcileStatus?: string
+  page?: number
+  size?: number
+}
+
+export interface CreateRefundOrderPayload {
+  rechargeOrderId: number
+  refundAmount: number
+  refundReason?: string
+}
+
+export interface AuditRefundOrderPayload {
+  auditRemark?: string
+  refundTransactionNo?: string
+}
+
+export interface PayCallbackLogQuery {
+  payMethod?: string
+  rechargeNo?: string
+  transactionNo?: string
+  callbackStatus?: string
+  page?: number
+  size?: number
+}
 export interface PlayChargeQuery {
   accountId?: number
   adId?: number
@@ -170,6 +277,37 @@ export function confirmRechargeOrder(id: number, data: ConfirmRechargePayload) {
   return request.post(`/wallet/recharges/${id}/confirm`, data) as Promise<ApiResponse<RechargeOrder>>
 }
 
+
+export function fetchRefundOrders(params: RefundOrderQuery) {
+  return request.get('/wallet/refunds', { params }) as Promise<ApiResponse<PageResult<RefundOrder>>>
+}
+
+export function createRefundOrder(data: CreateRefundOrderPayload) {
+  return request.post('/wallet/refunds', data) as Promise<ApiResponse<RefundOrder>>
+}
+
+export function approveRefundOrder(id: number, data: AuditRefundOrderPayload) {
+  return request.post(`/wallet/refunds/${id}/approve`, data) as Promise<ApiResponse<RefundOrder>>
+}
+
+export function rejectRefundOrder(id: number, data: AuditRefundOrderPayload) {
+  return request.post(`/wallet/refunds/${id}/reject`, data) as Promise<ApiResponse<RefundOrder>>
+}
+export function syncRefundOrder(id: number) {
+  return request.post(`/wallet/refunds/${id}/sync`) as Promise<ApiResponse<RefundOrder>>
+}
+
+export function fetchRefundReconcileActions(id: number) {
+  return request.get(`/wallet/refunds/${id}/reconcile-actions`) as Promise<ApiResponse<RefundReconcileAction[]>>
+}
+
+export function handleRefundReconcileAction(id: number, data: RefundReconcileActionPayload) {
+  return request.post(`/wallet/refunds/${id}/reconcile-actions`, data) as Promise<ApiResponse<RefundOrder>>
+}
+
+export function fetchPayCallbackLogs(params: PayCallbackLogQuery) {
+  return request.get('/wallet/pay-callback-logs', { params }) as Promise<ApiResponse<PageResult<PayCallbackLog>>>
+}
 export function fetchWalletTransactions(params: WalletAccountQuery & { accountId?: number; transactionType?: string }) {
   return request.get('/wallet/transactions', { params }) as Promise<ApiResponse<PageResult<WalletTransaction>>>
 }

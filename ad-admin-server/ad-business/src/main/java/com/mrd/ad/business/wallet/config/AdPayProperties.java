@@ -33,6 +33,11 @@ public class AdPayProperties {
         private String apiKey;
         private String notifyUrl;
         private String unifiedOrderUrl = "https://api.mch.weixin.qq.com/pay/unifiedorder";
+        private boolean refundEnabled;
+        private String refundUrl = "https://api.mch.weixin.qq.com/secapi/pay/refund";
+        private String refundQueryUrl = "https://api.mch.weixin.qq.com/pay/refundquery";
+        private String refundCertPath;
+        private String refundCertPassword;
         private String bodyPrefix = "ViiAD充值";
 
         public boolean isEnabled() {
@@ -83,6 +88,45 @@ public class AdPayProperties {
             this.unifiedOrderUrl = unifiedOrderUrl;
         }
 
+        public boolean isRefundEnabled() {
+            return refundEnabled;
+        }
+
+        public void setRefundEnabled(boolean refundEnabled) {
+            this.refundEnabled = refundEnabled;
+        }
+
+        public String getRefundUrl() {
+            return refundUrl;
+        }
+
+        public void setRefundUrl(String refundUrl) {
+            this.refundUrl = refundUrl;
+        }
+        public String getRefundQueryUrl() {
+            return refundQueryUrl;
+        }
+
+        public void setRefundQueryUrl(String refundQueryUrl) {
+            this.refundQueryUrl = refundQueryUrl;
+        }
+
+        public String getRefundCertPath() {
+            return refundCertPath;
+        }
+
+        public void setRefundCertPath(String refundCertPath) {
+            this.refundCertPath = refundCertPath;
+        }
+
+        public String getRefundCertPassword() {
+            return refundCertPassword;
+        }
+
+        public void setRefundCertPassword(String refundCertPassword) {
+            this.refundCertPassword = refundCertPassword;
+        }
+
         public String getBodyPrefix() {
             return bodyPrefix;
         }
@@ -99,6 +143,7 @@ public class AdPayProperties {
         private String alipayPublicKey;
         private String notifyUrl;
         private String gatewayUrl = "https://openapi.alipay.com/gateway.do";
+        private boolean refundEnabled;
         private String charset = "UTF-8";
         private String signType = "RSA2";
         private String subjectPrefix = "ViiAD充值";
@@ -149,6 +194,14 @@ public class AdPayProperties {
 
         public void setGatewayUrl(String gatewayUrl) {
             this.gatewayUrl = gatewayUrl;
+        }
+
+        public boolean isRefundEnabled() {
+            return refundEnabled;
+        }
+
+        public void setRefundEnabled(boolean refundEnabled) {
+            this.refundEnabled = refundEnabled;
         }
 
         public String getCharset() {

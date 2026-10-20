@@ -6,15 +6,20 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.math.BigDecimal;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyStore;
 import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
@@ -117,6 +122,55 @@ public final class WechatPayHelper {
         }
     }
 
+
+    public static String postXmlWithCert(String url, String requestXml, String certPath, String certPassword) {
+        HttpsURLConnection connection = null;
+        FileInputStream certInput = null;
+        try {
+            char[] password = StringUtils.defaultString(certPassword).toCharArray();
+            KeyStore keyStore = KeyStore.getInstance("PKCS12");
+            certInput = new FileInputStream(certPath);
+            keyStore.load(certInput, password);
+
+            KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+            keyManagerFactory.init(keyStore, password);
+            SSLContext sslContext = SSLContext.getInstance("TLS");
+            sslContext.init(keyManagerFactory.getKeyManagers(), null, new SecureRandom());
+
+            connection = (HttpsURLConnection) new URL(url).openConnection();
+            connection.setSSLSocketFactory(sslContext.getSocketFactory());
+            connection.setRequestMethod("POST");
+            connection.setConnectTimeout(10000);
+            connection.setReadTimeout(15000);
+            connection.setDoOutput(true);
+            connection.setRequestProperty("Content-Type", "text/xml; charset=UTF-8");
+            OutputStream output = connection.getOutputStream();
+            output.write(requestXml.getBytes(StandardCharsets.UTF_8));
+            output.flush();
+            output.close();
+            InputStream input = connection.getResponseCode() >= 400 ? connection.getErrorStream() : connection.getInputStream();
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            byte[] bytes = new byte[4096];
+            int len;
+            while ((len = input.read(bytes)) != -1) {
+                buffer.write(bytes, 0, len);
+            }
+            input.close();
+            return new String(buffer.toByteArray(), StandardCharsets.UTF_8);
+        } catch (Exception ex) {
+            throw new IllegalStateException("微信退款证书请求失败", ex);
+        } finally {
+            if (certInput != null) {
+                try {
+                    certInput.close();
+                } catch (Exception ignored) {
+                }
+            }
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
     private static String md5(String value) {
         try {
             MessageDigest digest = MessageDigest.getInstance("MD5");
